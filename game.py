@@ -1,5 +1,5 @@
 import secrets
-from typing import Tuple, List, Dict
+from typing import Tuple
 from phevaluator import evaluate_omaha_cards
 
 
@@ -51,17 +51,49 @@ class PokerGame:
         self.oop_player = Player(name="OOP", chips=200)
         self.ip_player = Player(name="IP", chips=200)
 
+    def deal_cards(self):
+        for player in [self.oop_player, self.ip_player]:
+            player.hand = [self.deck.cards.pop() for _ in range(4)]
+
     def start_new_hand(self):
-        self.deck.shuffle()
-        self.community_cards = []
+        self.reset_hands()
+        self.deck_shuffle()
         self.pot = 3
         self.oop_player.chips = 198
         self.ip_player.chips = 199
         self.deal_cards()
 
-    def deal_cards(self):
-        for player in [self.oop_player, self.ip_player]:
-            player.hand = [self.deck.cards.pop() for _ in range(4)]
+    def play_hand(self):
+        self.start_new_hand()
+        preflop_result = self.preflop_betting()
+        if preflop_result["hand_over"]:
+            return preflop_result
+
+        flop_result = self.deal_flop()
+        if flop_result["hand_over"]:
+            return flop_result
+
+        turn_result = self.deal_turn()
+        if turn_result["hand_over"]:
+            return turn_result
+
+        river_result = self.deal_river()
+        if river_result["hand_over"]:
+            return river_result
+
+        return self.determine_showdown_winner()
+
+    def deal_flop(self):
+        self.deal_community_cards(3)
+        return self.postflop_betting("flop")
+
+    def deal_turn(self):
+        self.deal_community_cards(1)
+        return self.postflop_betting("turn")
+
+    def deal_river(self):
+        self.deal_community_cards(1)
+        return self.postflop_betting("river")
 
     def postflop_betting(self, action, player, street):
         # Implement postflop betting logic
@@ -70,9 +102,46 @@ class PokerGame:
     def deal_community_cards(self, num_cards):
         self.community_cards.extend([self.deck.cards.pop() for _ in range(num_cards)])
 
-    def determine_winner(self):
-        # Implement winner determination logic
-        pass
+    def reset_hands(self):
+        self.deck = Deck()
+        self.community_cards = []
+        self.pot = 0
+        self.oop_player.hand = []
+        self.ip_player.hand = []
+        self.current_bet = []
+        self.num_actions = 0
+        self.last_action = None
+        self.hand_over = False
+
+    def determine_showdown_winner(self):
+        # fmt: off
+        ip_rank = evaluate_omaha_cards(
+            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
+            self.ip_player.hand[0], self.ip_player.hand[1], self.ip_player.hand[2], self.ip_player.hand[3],
+        )
+        oop_rank = evaluate_omaha_cards(
+            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
+            self.oop_player.hand[0], self.oop_player.hand[1], self.oop_player.hand[2], self.oop_player.hand[3],
+        )
+        # fmt: on
+        result = {
+            "ip_hand": self.ip_player.hand,
+            "oop_hand": self.oop_player.hand,
+            "community_cards": self.community_cards,
+            "pot": self.pot,
+        }
+
+        if ip_rank < oop_rank:
+            result["winner"] = "IP Player"
+            result["winning hand"] = self.ip_player.hand
+        elif oop_rank < ip_rank:
+            result["winner"] = "OOP Player"
+            result["winning hand"] = self.oop_player.hand
+        else:
+            result["winner"] = "chop"
+            result["winning hand"] = None
+
+        return result
 
     def get_game_state(self):
         return {
@@ -91,256 +160,147 @@ class PokerGame:
         }
 
     def preflop_betting(self):
-        num_active_players = len(
+        self.num_active_players = len(
             [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
         )
-        ip_committed, oop_committed = 1, 2
-        current_bet, num_actions = 2, 0
-        last_action = "bet"
-        current_player = self.ip_player
-        hand_over = False
+        self.ip_committed, self.oop_committed = 1, 2
+        self.current_bet, self.num_actions = 2, 0
+        self.last_action = "bet"
+        self.current_player = self.ip_player
+        self.hand_over = False
 
         while True:
-            if hand_over or num_active_players == 1:
-                current_player.chips += self.pot
+            if self.hand_over or self.num_active_players == 1:
+                self.current_player.chips += self.pot
                 return {
-                    "message": f"{current_player.name} wins ${self.pot}",
+                    "message": f"{self.current_player.name} wins ${self.pot}",
                     "hand_over": True,
                 }
 
-            all_players_acted = num_actions >= num_active_players
+            all_players_acted = self.num_actions >= self.num_active_players
             all_bets_settled = self.oop_player.chips == self.ip_player.chips
             if all_players_acted and all_bets_settled:
-                break
+                return {"message": "Betting round complete", "hand_over": False}
 
             # Instead of prompting for input, we'll return the game state
+            valid_actions = self.get_valid_preflop_actions()
             game_state = {
-                "current_player": current_player.name,
-                "valid_actions": self.get_valid_actions(
-                    current_player, last_action, num_actions
-                ),
+                "current_player": self.current_player.name,
+                "valid_actions": valid_actions,
                 "pot": self.pot,
-                "current_bet": current_bet,
-                "ip_committed": ip_committed,
-                "oop_committed": oop_committed,
-                "hand_over": false,
+                "current_bet": self.current_bet,
+                "ip_committed": self.ip_committed,
+                "oop_committed": self.oop_committed,
+                "hand_over": False,
             }
             return game_state
 
     def process_preflop_action(self, action):
         # This method will be called from the server to process each action
-        current_player = self.oop_player if player_name == "OOP" else self.ip_player
-        other_player = self.ip_player if player_name == "OOP" else self.oop_player
+        if action not in self.get_valid_preflop_actions():
+            return {"error: Invalid Action"}
 
-        # Implement the action logic here (bet, call, fold, etc.)
-        # Update pot, player chips, etc.
+        if action == "bet":
+            self.handle_bet()
+        if action == "call":
+            self.handle_call()
+        if action == "check":
+            self.handle_check()
+        if action == "fold":
+            self.handle_fold()
 
-        # Return the updated game state
+        self.switch_players()
         return self.preflop_betting()
 
-    def get_valid_preflop_actions(self, current_player, last_action, num_actions):
-        if current_player == self.ip_player and num_actions == 0:
+    def get_valid_preflop_actions(self):
+        # fmt: off
+        if self.oop_player.chips == 0 or self.ip_player.chips == 0: #Facing All in
+            return ["call", "fold"]
+        if self.current_player == self.ip_player and self.num_actions == 0: #Preflop Open
             return ["call", "bet", "fold"]
-        elif current_player == self.oop_player and last_action == "call":
+        elif self.current_player == self.oop_player and self.last_action == "call": #Facing Open limp
             return ["check", "bet"]
         else:
             return ["call", "bet", "fold"]
-    
+        # fmt: on
+
+    def handle_bet(self):
+        is_allin, bet_amount = self.calculate_preflop_bet_size()
+        if not is_allin:
+            if self.current_player.name == self.ip_player.name:
+                self.current_player.chips -= bet_amount - self.ip_committed
+                self.pot += bet_amount - self.ip_committed
+                self.ip_committed = bet_amount
+                self.current_bet = bet_amount
+            else:
+                self.current_player.chips -= bet_amount - self.oop_committed
+                self.pot += bet_amount - self.oop_committed
+                self.oop_committed = bet_amount
+                self.current_bet = bet_amount
+        else:
+            self.current_player.chips -= bet_amount
+            self.pot += bet_amount
+        self.num_actions += 1
+        self.last_action = "bet"
+
+    def handle_call(self):
+        if self.current_player == self.ip_player and self.num_actions == 0:
+            self.current_player.chips -= 1
+            self.pot += 1
+        else:
+            if self.current_player.name == self.oop_player.name:
+                diff = self.ip_committed - self.oop_committed
+            else:
+                diff = self.oop_committed - self.ip_committed
+            self.current_player.chips -= diff
+            self.pot += diff
+        self.num_actions += 1
+        self.last_action = "call"
+
+    def handle_check(self):
+        if self.current_player == self.oop_player and self.last_action == "call":
+            self.num_actions += 1
+            self.last_action = "check"
+
+    def handle_fold(self):
+        self.num_active_players -= 1
+        self.hand_over = True
+
     def switch_players(self):
-        self.current_player = self.oop_player if self.current_player == self.ip_player else self.ip_player
+        self.current_player = (
+            self.oop_player if self.current_player == self.ip_player else self.ip_player
+        )
 
-
-    def calculate_preflop_bet_size(
-        pot: int, current_bet: int, player_chips: int
-    ) -> Tuple[bool, int]:
+    def calculate_preflop_bet_size(self):
         all_in = False
         is_raise = True
         if is_raise:
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-            bet_size = 3 * current_bet
+            bet_size = 3 * self.current_bet
         else:
             # If it's a standard bet, the bet size is equal to the current pot size
-            bet_size = pot
+            bet_size = self.pot
 
-        if player_chips < bet_size:
-            bet_size = player_chips
+        if self.current_player.chips < bet_size:
+            bet_size = self.current_player.chips
             all_in = True
 
         return all_in, bet_size
 
-    def preflop_betting_round2(
-        pot: int, oop_player: Player, ip_player: Player
-    ) -> Tuple[int, Player, Player, bool]:
-        num_active_players = len(
-            [player for player in Player.get_players() if player.chips > 0]
-        )
+    def calculate_postflop_bet_size(self):
+        all_in = False
+        if self.last_action == "bet":
+            # If it's a raise, the bet size is 3 times the last raise plus the current pot size
+            bet_size = 2 * self.current_bet + pot
+        else:
+            # If it's a standard bet, the bet size is equal to the current pot size
+            bet_size = self.pot
 
-        ip_committed = 1
-        oop_committed = 2
-        current_bet = 2
-        num_actions = 0
-        last_action = "bet"
-        current_player = ip_player
-        hand_over = False
+        if self.current_player.chips < bet_size:
+            bet_size = self.current_player.chips
+            all_in = True
 
-        while True:
-            if hand_over:
-                current_player.chips += pot
-                print(f"{current_player.name} wins ${pot}")
-                return
-            if num_active_players == 1:
-                current_player.chips += pot
-                print(f"{current_player.name} wins ${pot}")
-                pot = 0
-                break
-            all_players_acted = num_actions >= num_active_players
-            all_bets_settled = all(
-                player.chips == oop_player.chips for player in Player.get_players()
-            )
-            if all_players_acted and all_bets_settled:
-                break
-
-            # Prompt player for action
-            # All in Scenario
-            if oop_player.chips == 0 or ip_player.chips == 0:
-                valid_actions = ["call", "fold"]
-                action = input(f"\n{current_player.name}, enter your action (call, fold): ")
-                while action not in valid_actions:
-                    action = input(
-                        f"\n{current_player.name}, enter your action (call, fold): "
-                    )
-                if action.lower() == "call":
-                    print(f"{current_player.name} calls")
-                    num_actions += 1
-                    pot += current_player.chips
-                    current_player.chips -= current_player.chips
-                break
-
-            if current_player == ip_player and num_actions == 0:
-                valid_actions = ["call", "bet", "fold"]
-                action = input(
-                    f"\n{current_player.name}, enter your action (call, bet, fold): "
-                )
-                while action not in valid_actions:
-                    action = input(
-                        f"\n{current_player.name}, enter your action (call, bet, fold): "
-                    )
-
-            elif current_player == oop_player and last_action == "call":
-                valid_actions = ["check", "bet"]
-                action = input(f"{current_player.name}, enter your action (check, bet): ")
-                while action not in valid_actions:
-                    action = input(
-                        f"\n{current_player.name}, enter your action (check, bet): "
-                    )
-            else:
-                valid_actions = ["call", "bet", "fold"]
-                action = input(
-                    f"\n{current_player.name}, enter your action (call, bet, fold): "
-                )
-                while action not in valid_actions:
-                    action = input(
-                        f"\n{current_player.name}, enter your action (call, bet, fold): "
-                    )
-
-            if action.lower() == "bet":
-                # Player bets or raises
-                is_raise = True
-                is_allin, bet_amount = calculate_preflop_bet_size(
-                    pot,
-                    current_bet,
-                    player_chips=current_player.chips,
-                )
-                if not is_allin:
-                    if current_player.name == ip_player.name:
-                        current_player.chips -= bet_amount - ip_committed
-                        pot += bet_amount - ip_committed
-                        ip_committed = bet_amount
-                        current_bet = bet_amount
-                        num_actions += 1
-                        last_action = "bet"
-                    else:
-                        current_player.chips -= bet_amount - oop_committed
-                        pot += bet_amount - oop_committed
-                        oop_committed = bet_amount
-                        current_bet = bet_amount
-                        num_actions += 1
-                        last_action = "bet"
-
-                    if is_raise:
-                        print(f"{current_player.name} raises to {bet_amount}.")
-                    else:
-                        print(f"{current_player.name} bets {bet_amount}.")
-                else:
-                    if current_player.name == ip_player.name:
-                        current_player.chips -= bet_amount
-                        pot += bet_amount
-                        num_actions += 1
-                        last_action = "bet"
-                    else:
-                        current_player.chips -= bet_amount
-                        pot += bet_amount
-                        num_actions += 1
-                        last_action = "bet"
-                    print(f"{current_player.name} is all in for {bet_amount}")
-
-            elif action.lower() == "call":
-                if current_player == ip_player and num_actions == 0:
-                    print(f"{current_player.name} calls")
-                    num_actions += 1
-                    last_action = "call"
-                    current_player.chips -= 1
-                    pot += 1
-                else:
-                    print(f"{current_player.name} calls")
-                    num_actions += 1
-                    if current_player.name == oop_player.name:
-                        diff = ip_committed - oop_committed
-                        current_player.chips -= diff
-                        pot += diff
-
-                    else:
-                        diff = oop_committed - ip_committed
-                        current_player.chips -= diff
-                        pot += diff
-
-            elif action.lower() == "check":
-                if current_player == oop_player and last_action == "call":
-                    print(f"{current_player.name} checks")
-                    num_actions += 1
-                    last_action = "check"
-                else:
-                    print("Invalid action. You cannot check at this point.")
-            elif action.lower() == "fold":
-                # Player folds
-                num_active_players -= 1
-                hand_over = True
-                print(f"{current_player.name} folds.")
-            else:
-                print("Invalid action. Please enter a valid action.")
-                continue
-
-            # Switch to the next player
-            current_player = oop_player if current_player == ip_player else ip_player
-        return pot, ip_player, oop_player, hand_over
-
-
-def calculate_bet_size(
-    pot: int, current_bet: int, is_raise: bool, player_chips: int
-) -> Tuple[bool, int]:
-    all_in = False
-    if is_raise:
-        # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-        bet_size = 2 * current_bet + pot
-    else:
-        # If it's a standard bet, the bet size is equal to the current pot size
-        bet_size = pot
-
-    if player_chips < bet_size:
-        bet_size = player_chips
-        all_in = True
-
-    return all_in, bet_size
+        return all_in, bet_size
 
 
 def preflop_betting_round2(
