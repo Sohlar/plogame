@@ -1,5 +1,5 @@
 import secrets
-from typing import Tuple
+from typing import Tuple, List, Dict
 from phevaluator import evaluate_omaha_cards
 
 
@@ -19,9 +19,11 @@ class Player:
 
     def reset_hands():
         [player.hand.clear() for player in Player.get_players()]
+
     def reset_chips():
         for player in Player.get_players():
             player.chips = 200
+
 
 class Deck:
     def __init__(self):
@@ -36,6 +38,117 @@ class Deck:
 
     def shuffle(self):
         secrets.SystemRandom().shuffle(self.cards)
+
+
+# poker_engine.py
+
+
+class PokerGame:
+    def __init__(self):
+        self.deck = Deck()
+        self.community_cards = []
+        self.pot = 0
+        self.oop_player = Player(name="OOP", chips=200)
+        self.ip_player = Player(name="IP", chips=200)
+
+    def start_new_hand(self):
+        self.deck.shuffle()
+        self.community_cards = []
+        self.pot = 3
+        self.oop_player.chips = 198
+        self.ip_player.chips = 199
+        self.deal_cards()
+
+    def deal_cards(self):
+        for player in [self.oop_player, self.ip_player]:
+            player.hand = [self.deck.cards.pop() for _ in range(4)]
+
+    def preflop_betting(self, action, player):
+        # Implement preflop betting logic
+        pass
+
+    def postflop_betting(self, action, player, street):
+        # Implement postflop betting logic
+        pass
+
+    def deal_community_cards(self, num_cards):
+        self.community_cards.extend([self.deck.cards.pop() for _ in range(num_cards)])
+
+    def determine_winner(self):
+        # Implement winner determination logic
+        pass
+
+    def get_game_state(self):
+        return {
+            "pot": self.pot,
+            "community_cards": self.community_cards,
+            "oop_player": {
+                "name": self.oop_player.name,
+                "chips": self.oop_player.chips,
+                "hand": self.oop_player.hand,
+            },
+            "ip_player": {
+                "name": self.ip_player.name,
+                "chips": self.ip_player.chips,
+                "hand": self.ip_player.hand,
+            },
+        }
+
+    def preflop_betting(self):
+        num_active_players = len(
+            [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
+        )
+        ip_committed, oop_committed = 1, 2
+        current_bet, num_actions = 2, 0
+        last_action = "bet"
+        current_player = self.ip_player
+        hand_over = False
+
+        while True:
+            if hand_over or num_active_players == 1:
+                current_player.chips += self.pot
+                return {
+                    "message": f"{current_player.name} wins ${self.pot}",
+                    "hand_over": True,
+                }
+
+            all_players_acted = num_actions >= num_active_players
+            all_bets_settled = self.oop_player.chips == self.ip_player.chips
+            if all_players_acted and all_bets_settled:
+                break
+
+            # Instead of prompting for input, we'll return the game state
+            game_state = {
+                "current_player": current_player.name,
+                "valid_actions": self.get_valid_actions(
+                    current_player, last_action, num_actions
+                ),
+                "pot": self.pot,
+                "current_bet": current_bet,
+                "ip_committed": ip_committed,
+                "oop_committed": oop_committed,
+            }
+            return game_state
+
+    def process_preflop_action(self, action, player_name):
+        # This method will be called from the server to process each action
+        current_player = self.oop_player if player_name == "OOP" else self.ip_player
+        other_player = self.ip_player if player_name == "OOP" else self.oop_player
+
+        # Implement the action logic here (bet, call, fold, etc.)
+        # Update pot, player chips, etc.
+
+        # Return the updated game state
+        return self.preflop_betting()
+
+    def get_valid_preflop_actions(self, current_player, last_action, num_actions):
+        if current_player == self.ip_player and num_actions == 0:
+            return ["call", "bet", "fold"]
+        elif current_player == self.oop_player and last_action == "call":
+            return ["check", "bet"]
+        else:
+            return ["call", "bet", "fold"]
+
 
 def calculate_preflop_bet_size(
     pot: int, current_bet: int, player_chips: int
@@ -62,7 +175,7 @@ def calculate_bet_size(
     all_in = False
     if is_raise:
         # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-        bet_size = 3 * current_bet + pot
+        bet_size = 2 * current_bet + pot
     else:
         # If it's a standard bet, the bet size is equal to the current pot size
         bet_size = pot
@@ -77,7 +190,6 @@ def calculate_bet_size(
 def preflop_betting_round2(
     pot: int, oop_player: Player, ip_player: Player
 ) -> Tuple[int, Player, Player, bool]:
-
     num_active_players = len(
         [player for player in Player.get_players() if player.chips > 0]
     )
@@ -94,7 +206,7 @@ def preflop_betting_round2(
         if hand_over:
             current_player.chips += pot
             print(f"{current_player.name} wins ${pot}")
-            return 
+            return
         if num_active_players == 1:
             current_player.chips += pot
             print(f"{current_player.name} wins ${pot}")
@@ -239,25 +351,28 @@ def postflop_betting_round(
     num_active_players = len(
         [player for player in Player.get_players() if player.chips > 0]
     )
-    last_bet = 0
+    ip_committed = 0
+    oop_committed = 0
     current_bet = 0
     num_actions = 0
-
-    # Determine the initial player based on the street
     current_player = oop_player
+    hand_over = False
 
     # Betting loop
     while True:
         # Conditional checks to end betting round
+        #
+        if hand_over:
+            current_player.chips += pot
+            print(f"{current_player.name} wins ${pot}")
+            return
         if num_active_players == 1:
             current_player.chips += pot
             pot = 0
             break
         all_players_acted = num_actions >= num_active_players
         all_bets_settled = all(
-            player.chips == oop_player.chips
-            for player in Player.get_players()
-            if player.chips > 0
+            player.chips == oop_player.chips for player in Player.get_players()
         )
         if all_players_acted and all_bets_settled:
             break
@@ -276,10 +391,6 @@ def postflop_betting_round(
                 current_player.chips -= current_player.chips
             break
 
-        # Display player's hand
-        print(f"{current_player.name}'s hand: {current_player.hand}")
-
-        # Prompt player for action
         if current_bet == 0:
             action = input(
                 f"{current_player.name}, enter your action (check, bet, fold): "
@@ -322,7 +433,8 @@ def postflop_betting_round(
 
         elif action.lower() == "bet":
             # Player bets
-            is_raise = last_bet > 0
+            is_raise = current_bet > 0
+            print(f"Postflop is_raise check: {is_raise}")
             is_allin, bet_amount = calculate_bet_size(
                 pot,
                 current_bet,
@@ -352,10 +464,37 @@ def postflop_betting_round(
     return pot, oop_player, ip_player, hand_over
 
 
+def determine_showdown_winner(ip_player: Player, oop_player: Player, community_cards):
+    # fmt: off
+    ip_rank = evaluate_omaha_cards(
+        community_cards[0], community_cards[1], community_cards[2], community_cards[3], community_cards[4],
+        ip_player.hand[0], ip_player.hand[1], ip_player.hand[2], ip_player.hand[3],
+    )
+    oop_rank = evaluate_omaha_cards(
+        community_cards[0], community_cards[1], community_cards[2], community_cards[3], community_cards[4],
+        oop_player.hand[0], oop_player.hand[1], oop_player.hand[2], oop_player.hand[3],
+    )
+    # fmt: on
+    print("IP Hand")
+    print(ip_player.hand)
+    print("OOP Hand")
+    print(oop_player.hand)
+
+    if ip_rank < oop_rank:
+        print(f"IP Wins: {ip_player.hand}")
+        return ip_player
+    elif oop_rank < ip_rank:
+        print(f"OOP Wins: {oop_player.hand}")
+        return oop_player
+    else:
+        print(f"Chop")
+        return None
+
+    community_cards = []
 
 
-
-
+deck = Deck()
+deck.shuffle()
 community_cards = []
 
 oop_player = Player(name="OOP", chips=200)
@@ -369,7 +508,7 @@ while True:
     ip_player.chips = 199
     # Deal the cards to the players
     [
-        player.hand.append(deck.pop())
+        player.hand.append(deck.cards.pop())
         for player in Player.get_players()
         for i in range(4)
     ]
@@ -396,7 +535,7 @@ while True:
     if pot == 0:
         break
     # Deal the flop
-    [community_cards.append(deck.pop()) for i in range(3)]
+    [community_cards.append(deck.cards.pop()) for i in range(3)]
     print(f"OOP({oop_player.chips})\nIP({ip_player.chips})\n")
     print(f"\n-------FLOP------\n${pot}\nBoard: {community_cards}\n")
     pot, oop_player, ip_player, hand_over = postflop_betting_round(
@@ -409,7 +548,7 @@ while True:
         continue
 
     # Deal the Turn
-    community_cards.append(deck.pop())
+    community_cards.append(deck.cards.pop())
     print(f"OOP({oop_player.chips})\nIP({ip_player.chips})\n")
     print(f"\n-------TURN------\n${ pot}\nBoard: {community_cards}\n")
     pot, oop_player, ip_player, hand_over = postflop_betting_round(
@@ -422,33 +561,14 @@ while True:
         continue
 
     # Deal the River
-    community_cards.append(deck.pop())
+    community_cards.append(deck.cards.pop())
     print(f"OOP({oop_player.chips})\nIP({ip_player.chips})\n")
     print(f"\n-------RIVER------\n${pot}\nBoard: {community_cards}\n")
     pot, oop_player, ip_player, hand_over = postflop_betting_round(
         pot=pot, street="river", oop_player=oop_player, ip_player=ip_player
     )
 
-def determine_showdown_winner(ip_player: Player, oop_player: Player):
-    # fmt: off
-    ip_rank = evaluate_omaha_cards(
-        community_cards[0], community_cards[1], community_cards[2], community_cards[3], community_cards[4],
-        ip_player.hand[0], ip_player.hand[1], ip_player.hand[2], ip_player.hand[3],
-    )
-    oop_rank = evaluate_omaha_cards(
-        community_cards[0], community_cards[1], community_cards[2], community_cards[3], community_cards[4],
-        oop_player.hand[0], oop_player.hand[1], oop_player.hand[2], oop_player.hand[3],
-    )
-    # fmt: on
+    determine_showdown_winner(ip_player, oop_player, community_cards)
 
-    if ip_rank > oop_rank:
-        print(f"IP Wins: {ip_player.hand}")
-        return ip_player
-    elif oop_rank > ip_rank:
-        print(f"OOP Wins: {oop_player.hand}")
-        return oop_player
-    else:
-        print(f"Chop")
-        return None
-
+    [player.hand.clear() for player in Player.get_players()]
     community_cards = []
