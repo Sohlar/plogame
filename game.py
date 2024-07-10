@@ -83,15 +83,15 @@ class PokerGame:
 
     def deal_flop(self):
         self.deal_community_cards(3)
-        return self.postflop_betting("flop")
+        return self.postflop_betting(street="flop")
 
     def deal_turn(self):
         self.deal_community_cards(1)
-        return self.postflop_betting("turn")
+        return self.postflop_betting(street="turn")
 
     def deal_river(self):
         self.deal_community_cards(1)
-        return self.postflop_betting("river")
+        return self.postflop_betting(street="river")
 
     def deal_community_cards(self, num_cards):
         self.community_cards.extend([self.deck.cards.pop() for _ in range(num_cards)])
@@ -260,7 +260,7 @@ class PokerGame:
 
         self.switch_players()
 
-    def process_postflop_action(self, action, street):
+    def process_postflop_action(self, action):
         if action not in self.get_valid_postflop_actions():
             return {"error": "Invalid Action"}
 
