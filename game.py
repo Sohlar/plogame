@@ -66,6 +66,7 @@ class PokerGame:
         if game_state["hand_over"]:
             return game_state
 
+        print("Entering flop")
         game_state = self.deal_flop()
         if game_state["hand_over"]:
             return game_state
@@ -94,6 +95,7 @@ class PokerGame:
 
     def deal_community_cards(self, num_cards):
         self.community_cards.extend([self.deck.cards.pop() for _ in range(num_cards)])
+        print(self.community_cards)
 
     def reset_hands(self):
         self.deck = Deck()
@@ -197,7 +199,9 @@ class PokerGame:
 
             all_players_acted = self.num_actions >= self.num_active_players
             all_bets_settled = self.oop_player.chips == self.ip_player.chips
+            print(f"\n{all_players_acted}{all_bets_settled}\n")
             if all_players_acted and all_bets_settled:
+                print("Preflop betting complete")
                 game_state["message"] = "Preflop betting complete"
                 return game_state
 
@@ -305,8 +309,12 @@ class PokerGame:
                 self.oop_committed = bet_amount
                 self.current_bet = bet_amount
         else:
-            self.current_player.chips -= bet_amount
-            self.pot += bet_amount
+            if self.current_player.name == self.ip_player.name:
+                self.ip_committed += self.current_player.chips
+            else:
+                self.oop_committed += self.current_player.chips
+            self.pot += self.current_player.chips
+            self.current_player.chips = 0
         self.num_actions += 1
         self.last_action = "bet"
 
@@ -329,8 +337,14 @@ class PokerGame:
         else:
             if self.current_player.name == self.oop_player.name:
                 diff = self.ip_committed - self.oop_committed
+                print(f"\n{diff}")
+                self.oop_committed += diff
+                print(f"\n{self.oop_committed}")
             else:
                 diff = self.oop_committed - self.ip_committed
+                print(f"\n{diff}")
+                self.ip_committed += diff
+                print(f"\n{self.ip_committed}")
             self.current_player.chips -= diff
             self.pot += diff
         self.num_actions += 1
@@ -380,10 +394,7 @@ class PokerGame:
         if is_raise:
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
             bet_size = 3 * self.current_bet
-        else:
-            # If it's a standard bet, the bet size is equal to the current pot size
-            bet_size = self.pot
-
+        print(f"\n{self.current_player.chips} betsize: {bet_size}")
         if self.current_player.chips < bet_size:
             bet_size = self.current_player.chips
             all_in = True
