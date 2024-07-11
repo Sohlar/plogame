@@ -321,13 +321,24 @@ class PokerGame:
 
     def handle_postflop_bet(self):
         is_allin, bet_amount = self.calculate_postflop_bet_size()
-        self.current_player.chips -= bet_amount
-        self.pot += bet_amount
-        self.current_bet = bet_amount
-        if self.current_player == self.ip_player:
-            self.ip_committed += bet_amount
+        if not is_allin:
+            if self.current_player.name == self.ip_player.name:
+                self.current_player.chips -= bet_amount
+                self.pot += bet_amount
+                self.ip_committed += bet_amount
+                self.current_bet = bet_amount
+            else:
+                self.current_player.chips -= bet_amount
+                self.pot += bet_amount
+                self.oop_committed += bet_amount
+                self.current_bet = bet_amount
         else:
-            self.oop_committed += bet_amount
+            if self.current_player == self.ip_player:
+                self.ip_committed += self.ip_player.chips
+            else:
+                self.oop_committed += self.oop_player.chips
+            self.pot += self.current_player.chips
+            self.current_player.chips = 0
         self.num_actions += 1
         self.last_action = "bet"
 
