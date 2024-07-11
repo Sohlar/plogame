@@ -242,7 +242,7 @@ class PokerGame:
             valid_actions = self.get_valid_postflop_actions()
             action = self.get_player_action(valid_actions)
             self.process_postflop_action(action)
-            return game_state
+        return game_state
 
     def process_preflop_action(self, action):
         # This method will be called from the server to process each action
@@ -273,6 +273,7 @@ class PokerGame:
         elif action == "fold":
             self.handle_fold()
 
+        print("switching players")
         self.switch_players()
 
     def get_valid_preflop_actions(self):
