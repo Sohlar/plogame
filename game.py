@@ -129,12 +129,18 @@ class PokerGame:
         if ip_rank < oop_rank:
             result["winner"] = "IP Player"
             result["winning hand"] = self.ip_player.hand
+            self.ip_player.chips += self.pot
         elif oop_rank < ip_rank:
             result["winner"] = "OOP Player"
             result["winning hand"] = self.oop_player.hand
+            self.oop_player.chips += self.pot
         else:
             result["winner"] = "chop"
             result["winning hand"] = None
+            self.ip_player.chips += (self.pot / 2)
+            self.oop_player.chips += (self.pot / 2)
+
+
 
         return result
 
@@ -199,9 +205,7 @@ class PokerGame:
 
             all_players_acted = self.num_actions >= self.num_active_players
             all_bets_settled = self.oop_player.chips == self.ip_player.chips
-            print(f"\n{all_players_acted}{all_bets_settled}\n")
             if all_players_acted and all_bets_settled:
-                print("Preflop betting complete")
                 game_state["message"] = "Preflop betting complete"
                 return game_state
 
@@ -273,7 +277,6 @@ class PokerGame:
         elif action == "fold":
             self.handle_fold()
 
-        print("switching players")
         self.switch_players()
 
     def get_valid_preflop_actions(self):
@@ -349,14 +352,10 @@ class PokerGame:
         else:
             if self.current_player.name == self.oop_player.name:
                 diff = self.ip_committed - self.oop_committed
-                print(f"\n{diff}")
                 self.oop_committed += diff
-                print(f"\n{self.oop_committed}")
             else:
                 diff = self.oop_committed - self.ip_committed
-                print(f"\n{diff}")
                 self.ip_committed += diff
-                print(f"\n{self.ip_committed}")
             self.current_player.chips -= diff
             self.pot += diff
         self.num_actions += 1
@@ -365,13 +364,19 @@ class PokerGame:
     def handle_postflop_call(self):
         call_amount = self.current_bet
         if call_amount <= self.current_player.chips:
+            print("1")
+            print(self.current_player.chips)
+            print(call_amount)
             self.current_player.chips -= call_amount
             self.pot += call_amount
         else:
+            print("2")
+            # This is prone to bug. Only works under equal starting stacks.
             all_in_amount = self.current_player.chips
             self.current_player.chips = 0
             self.pot += all_in_amount
             difference = call_amount - all_in_amount
+            """
             other_player = (
                 self.ip_player
                 if self.current_player == self.oop_player
@@ -379,6 +384,7 @@ class PokerGame:
             )
             other_player.chips += difference
             self.pot -= difference
+            """
         self.num_actions += 1
         self.last_action = "call"
 
@@ -406,7 +412,6 @@ class PokerGame:
         if is_raise:
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
             bet_size = 3 * self.current_bet
-        print(f"\n{self.current_player.chips} betsize: {bet_size}")
         if self.current_player.chips < bet_size:
             bet_size = self.current_player.chips
             all_in = True
