@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Poker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #poker-table {
+            background-color: #2c8c2c;
+            border-radius: 200px;
+            padding: 20px;
+            text-align: center;
+        }
+        #message-log {
+            margin-top: 20px;
+            height: 150px;
+            overflow-y: auto;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="poker-table">
+        <h2>Poker Table</h2>
+        <div id="player-actions">
+            <button onclick="sendAction('check')">Check</button>
+            <button onclick="sendAction('bet')">Bet</button>
+            <button onclick="sendAction('fold')">Fold</button>
+        </div>
+        <div id="message-log"></div>
+    </div>
+
+    <script>
+        const roomName = 'table1';
+        const userId = 'player' + Math.floor(Math.random() * 1000);  // Generate a random player ID for this example
+        let pokerSocket = null;
+
+        function connectWebSocket() {
+            pokerSocket = new WebSocket(
+                'ws://' + window.location.host + '/ws/poker/' + roomName + '/'
+            );
+
+            pokerSocket.onopen = function(e) {
+                console.log('WebSocket connection established');
+                addMessage('Connected to the poker table.');
+            };
+
+            pokerSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                console.log('Action:', data.action, 'User:', data.user_id);
+                addMessage(`Player ${data.user_id} performed action: ${data.action}`);
+            };
+
+            pokerSocket.onclose = function(e) {
+                console.error('Poker socket closed unexpectedly');
+                addMessage('Disconnected from the poker table. Trying to reconnect...');
+                setTimeout(connectWebSocket, 2000);  // Try to reconnect after 2 seconds
+            };
+        }
+
+        function sendAction(action) {
+            if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
+                pokerSocket.send(JSON.stringify({
+                    'action': action,
+                    'user_id': userId
+                }));
+            } else {
+                console.error('WebSocket is not connected.');
+            }
+        }
+
+        function addMessage(message) {
+            const messageLog = document.getElementById('message-log');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messageLog.appendChild(messageElement);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+
+        // Connect to WebSocket when the page loads
+        connectWebSocket();
+    </script>
+</body>
+</html>
