@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify
-import game
+from game import PokerGame
 
 app = Flask(__name__)
+game = PokerGame()
 
 @app.route('/start', methods=['POST'])
 def start_game():
-    game.main()
+    game.play_hand()
     return jsonify(game.get_game_state())
 
 @app.route('/state', methods=['GET'])
