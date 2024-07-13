@@ -137,10 +137,8 @@ class PokerGame:
         else:
             result["winner"] = "chop"
             result["winning hand"] = None
-            self.ip_player.chips += (self.pot / 2)
-            self.oop_player.chips += (self.pot / 2)
-
-
+            self.ip_player.chips += self.pot / 2
+            self.oop_player.chips += self.pot / 2
 
         return result
 

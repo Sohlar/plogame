@@ -4,18 +4,23 @@ from game import PokerGame
 app = Flask(__name__)
 game = PokerGame()
 
-@app.route('/start', methods=['POST'])
+
+@app.route("/start", methods=["POST"])
 def start_game():
     game.play_hand()
     return jsonify(game.get_game_state())
 
-@app.route('/state', methods=['GET'])
+
+@app.route("/state", methods=["GET"])
 def get_state():
     return jsonify(game.get_game_state())
 
-app.route('/action', methods=['POST'])
+
+app.route("/action", methods=["POST"])
+
+
 def player_action():
-    action = request.json.get('action')
+    action = request.json.get("action")
     if not action:
         return jsonify({"error": "Invalid action"}), 400
 
@@ -25,6 +30,7 @@ def player_action():
 
     game_state = game.process_preflop_action(action)
     return jsonify(game_state)
+
 
 if __name__ == "__main__":
     app.run(debug=True)
