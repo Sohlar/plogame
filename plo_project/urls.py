@@ -17,8 +17,9 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from django.core.asgi import get_asgi_application
+from channels.auth import AuthMiddlewareStack
+from channels.routing import ProtocolTypeRouter, URLRouter
+from poker import routing
 
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path('game/', include('poker.urls'))
-]
+urlpatterns = [path("admin/", admin.site.urls), path("game/", include("poker.urls"))]

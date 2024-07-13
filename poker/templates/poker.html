@@ -52,7 +52,7 @@
 
         function connectWebSocket() {
             pokerSocket = new WebSocket(
-                'ws://' + window.location.host + '/ws/poker/' + roomName + '/'
+                'ws://' + window.location.host + '/ws/poker/table1/'
             );
 
             pokerSocket.onopen = function(e) {
