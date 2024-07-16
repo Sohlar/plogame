@@ -1,11 +1,13 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from .game import PokerGame
 
 class PokerConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         print("Attempting to connect")
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'poker_{self.room_name}'
+        self.game = PokerGame()
 
         # Join room group
         await self.channel_layer.group_add(
@@ -48,4 +50,12 @@ class PokerConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'action': action,
             'user_id': user_id
+        }))
+
+    async def handle_start_hand(self, data):
+        state = self.game.start_new_hand()
+
+        await self.send(text_data=json.dumps({
+            'type': 'game_state',
+            'game_state': game_state,
         }))

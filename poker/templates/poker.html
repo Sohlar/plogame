@@ -32,11 +32,37 @@
             margin: 5px;
             padding: 10px;
         }
+        .player-hand {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f8f8;
+            border-radius: 5px;
+        }
+        .card {
+            display: inline-block;
+            width: 50px;
+            height: 70px;
+            background-color: white;
+            border: 1px solid black;
+            margin: 0 5px;
+            text-align: center;
+            line-height: 70px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div id="poker-table">
         <h2>Poker Table</h2>
+        <button id="start-hand-btn" onclick="startHand()">Start Hand</button>
+        <div id="oop-player" class="player-hand">
+        <h3>OOP Player</h3>
+            <div id="oop-cards"></div>
+        </div>
+        <div id="ip-player" class="player-hand">
+        <h3>IP Player</h3>
+            <div id="ip-cards"></div>
+        </div>
         <div id="player-actions">
             <button onclick="sendAction('check')">Check</button>
             <button onclick="sendAction('bet')">Bet</button>
@@ -61,6 +87,16 @@
             };
 
             pokerSocket.onmessage = function(e) {
+                  const data = JSON.parse(e.data);
+                  if (data.type === 'game_state') {
+                      updateGameState(data.game_state);
+                  } else {
+                      console.log('Action:', data.action, 'User:', data.user_id);
+                      addMessage(`Player ${data.user_id} performed action: ${data.action}`);
+                  }
+              };
+
+            pokerSocket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
                 console.log('Action:', data.action, 'User:', data.user_id);
                 addMessage(`Player ${data.user_id} performed action: ${data.action}`);
@@ -71,6 +107,23 @@
                 addMessage('Disconnected from the poker table. Trying to reconnect...');
                 setTimeout(connectWebSocket, 2000);  // Try to reconnect after 2 seconds
             };
+        }
+
+        function updateGameState(gameState) {
+            updatePlayerHand('oop', gameState.oop_player.hand);
+            updatePlayerHand('ip', gameState.ip_player.hand);
+            addMessage('New hand started. Cards dealt.');
+        }
+
+        function updatePlayerHand(player, hand) {
+            const cardContainer = document.getElementById(`${player}-cards`);
+            cardContainer.innerHTML = '';
+            hand.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.textContent = card;
+                cardContainer.appendChild(cardElement);
+            });
         }
 
         function sendAction(action) {
@@ -91,6 +144,18 @@
             messageLog.appendChild(messageElement);
             messageLog.scrollTop = messageLog.scrollHeight;
         }
+
+        function startHand() {
+            if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
+                pokerSocket.send(JSON.stringify({
+                    'action': 'start_hand',
+                    'user_id': userId
+                }));
+            } else {
+                console.error('WebSocket is not connected.');
+            }
+        }
+
 
         // Connect to WebSocket when the page loads
         connectWebSocket();
