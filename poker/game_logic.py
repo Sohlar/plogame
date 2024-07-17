@@ -60,7 +60,6 @@ class PokerGame:
         self.street = "preflop"
         self.waiting_for_action = False
 
-
     def deal_cards(self):
         for player in [self.oop_player, self.ip_player]:
             player.hand = [self.deck.cards.pop() for _ in range(4)]
@@ -73,7 +72,7 @@ class PokerGame:
         self.oop_player.chips = 198
         self.ip_player.chips = 199
         self.deal_cards()
-        return get_game_state()
+        return self.get_game_state()
 
     def play_hand(self):
         self.start_new_hand()
@@ -133,6 +132,7 @@ class PokerGame:
             "num_actions": self.num_actions,
             "hand_over": self.hand_over,
             "waiting_for_action": self.waiting_for_action,
+            "valid_actions": self.valid_actions,
             "oop_player": {
                 "name": self.oop_player.name,
                 "chips": self.oop_player.chips,
@@ -144,6 +144,39 @@ class PokerGame:
                 "chips": self.ip_player.chips,
                 "hand": self.ip_player.hand,
                 "committed": self.ip_committed,
+            },
+        }
+
+    def get_public_game_state(self):
+        return {
+            "pot": self.pot,
+            "community_cards": self.community_cards,
+            "current_player": self.current_player.name,
+            "current_bet": self.current_bet,
+            "last_action": self.last_action,
+            "num_actions": self.num_actions,
+            "hand_over": self.hand_over,
+            "waiting_for_action": self.waiting_for_action,
+            "oop_player": {
+                "name": self.oop_player.name,
+                "chips": self.oop_player.chips,
+                "committed": self.oop_committed,
+            },
+            "ip_player": {
+                "name": self.ip_player.name,
+                "chips": self.ip_player.chips,
+                "committed": self.ip_committed,
+            },
+        }
+
+    def get_private_game_state(self):
+        return {
+            "valid_actions": self.valid_actions,
+            "oop_player": {
+                "hand": self.oop_player.hand,
+            },
+            "ip_player": {
+                "hand": self.ip_player.hand,
             },
         }
 
@@ -195,7 +228,6 @@ class PokerGame:
             self.process_preflop_action(action)
         return game_state
 
-
     def process_preflop_action(self, action):
         # This method will be called from the server to process each action
         if action not in self.get_valid_preflop_actions():
@@ -223,7 +255,6 @@ class PokerGame:
         else:
             return ["call", "bet", "fold"]
         # fmt: on
-
 
     def handle_preflop_bet(self):
         is_allin, bet_amount = self.calculate_preflop_bet_size()
@@ -417,7 +448,6 @@ class PokerGame:
             self.oop_player if self.current_player == self.ip_player else self.ip_player
         )
 
-
     def determine_showdown_winner(self):
         # fmt: off
         ip_rank = evaluate_omaha_cards(
@@ -451,41 +481,3 @@ class PokerGame:
             self.oop_player.chips += self.pot / 2
 
         return result
-
-def main():
-    game = PokerGame()
-
-    print("Welcome to the Poker Game!")
-    print("Players: OOP (Out of Position) and IP (In Position)")
-    print("Starting chips: 200 each")
-    print("Blinds: 1/2\n")
-
-    while True:
-        print("\n--- New Hand ---")
-        result = game.play_hand()
-
-        if "message" in result:
-            print(result["message"])
-        else:
-            print("Showdown!")
-            print(f"Community cards: {', '.join(result['community_cards'])}")
-            print(f"OOP hand: {', '.join(result['oop_hand'])}")
-            print(f"IP hand: {', '.join(result['ip_hand'])}")
-            print(f"Winner: {result['winner']}")
-            if result["winner"] != "chop":
-                print(f"Winning hand: {', '.join(result['winning hand'])}")
-            print(f"Pot: ${result['pot']}")
-
-        print("\nCurrent chip counts:")
-        print(f"OOP: ${game.oop_player.chips}")
-        print(f"IP: ${game.ip_player.chips}")
-
-        play_again = input("\nPlay another hand? (y/n): ").lower()
-        if play_again != "y":
-            break
-
-    print("\nThanks for playing!")
-
-
-if __name__ == "__main__":
-    main()
