@@ -1,0 +1,100 @@
+Join Table
+Start match
+
+Loop until quit {
+
+  Set blinds (public)
+  deal hand (private_hands)
+  preflop {
+      ip_player,
+        valid_actions(update state) --(consumer send state)--> client -> dynamic html button
+        action(dynamic html button) -> consumer -> update_game_state (ip_committed, last_action, pot) -> send_game_state 
+        switch_player
+      oop,
+        valid_actions(update state) --(consumer send state)--> client -> dynamic html button
+        action(dynamic html button) -> consumer -> update_game_state (ip_committed, last_action, pot) -> send_game_state 
+        switch_player
+      ...
+      action(dynamic html button) -> server -> 
+        if hand_over -> 
+          if allin:
+            deal flop -> update_state -> send_state
+            deal turn -> update_state -> send_state
+            deal river -> update_state -> send_state
+            determine winner -> update_state -> send_state
+          else
+            update_state -> send_state
+    }
+
+  flop {
+    deal_flop(server) --> update_state(server) -> send_public_state(consumer) -> generate html from state (client) 
+    initiate betting?????
+    oop_player,
+      valid_actions(server update state) --(consumer send private state)--> generate dynamic html button from state (client)
+      action(dynamic html button) -> consumer -> (server) update_game_state (oop_committed, last_action, pot) -> send_public_game_state  -> update dynamic html from state (client)
+      switch_player
+    ip_player,
+      valid_actions(server update state) --(consumer send private state)--> generate dynamic html button from state (client)
+      action(dynamic html button) -> consumer -> (server) update_game_state (oop_committed, last_action, pot) -> send_public_game_state  -> update dynamic html from state (client)
+      switch_player(server)
+    ...
+    action(dynamic html button) -> server -> 
+      if hand_over -> 
+        if allin:
+          deal turn -> update_state -> send_state
+          deal river -> update_state -> send_state
+          determine winner -> update_state -> send_state
+        else
+          update_state -> send_state
+  }
+
+  turn {
+    deal_turn(server) --> update_state(server) -> send_public_state(consumer) -> generate html from state (client) 
+    initiate betting?????
+    oop_player,
+      valid_actions(server update state) --(consumer send private state)--> generate dynamic html button from state (client)
+      action(dynamic html button) -> consumer -> (server) update_game_state (oop_committed, last_action, pot) -> send_public_game_state  -> update dynamic html from state (client)
+      switch_player
+    ip_player,
+      valid_actions(server update state) --(consumer send private state)--> generate dynamic html button from state (client)
+      action(dynamic html button) -> consumer -> (server) update_game_state (oop_committed, last_action, pot) -> send_public_game_state  -> update dynamic html from state (client)
+      switch_player(server)
+    ...
+    action(dynamic html button) -> server -> 
+      if hand_over -> 
+        if allin:
+          deal river -> update_state -> send_state
+          determine winner -> update_state -> send_state
+        else
+          update_state -> send_state
+  }
+
+  river {
+    deal_river(server) --> update_state(server) -> send_public_state(consumer) -> generate html from state (client) 
+    initiate betting?????
+    oop_player,
+      valid_actions(server update state) --(consumer send private state)--> generate dynamic html button from state (client)
+      action(dynamic html button) -> consumer -> (server) update_game_state (oop_committed, last_action, pot) -> send_public_game_state  -> update dynamic html from state (client)
+      switch_player
+    ip_player,
+      valid_actions(server update state) --(consumer send private state)--> generate dynamic html button from state (client)
+      action(dynamic html button) -> consumer -> (server) update_game_state (oop_committed, last_action, pot) -> send_public_game_state  -> update dynamic html from state (client)
+      switch_player(server)
+    ...
+    action(dynamic html button) -> server -> 
+      if allin:
+        determine winner -> update_state -> send_state
+      if fold:
+        update_state -> send_state
+      else:
+        determine winner -> update_state -> send_state
+  }
+
+  reset_game_state(server) -> 
+    update_game_state(server)
+    send_public_state(consumer) -> update dynamic html from state
+    send_private_state(consumer) -> update dynamic html from state
+}
+
+
+
