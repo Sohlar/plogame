@@ -39,7 +39,7 @@ This is a Django project for a Poker game. The project uses Django Channels for 
 
 5. Run the development server:
 
-    `python manage.py runserver`
+    `daphne plo_project.asgi:application`
 
 ### Running the Poker Game
 
