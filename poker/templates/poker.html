@@ -56,17 +56,23 @@
         <h2>Poker Table</h2>
         <button id="start-hand-btn" onclick="startHand()">Start Hand</button>
         <div id="oop-player" class="player-hand">
-        <h3>OOP Player</h3>
-            <div id="oop-cards"></div>
-        </div>
-        <div id="ip-player" class="player-hand">
-        <h3>IP Player</h3>
-            <div id="ip-cards"></div>
+          <h3>OOP Player</h3>
+          <p class="chips">Chips: 0</p>    
+          <div id="oop-cards"></div>
         </div>
         <div id="player-actions">
             <button onclick="sendAction('check')">Check</button>
             <button onclick="sendAction('bet')">Bet</button>
             <button onclick="sendAction('fold')">Fold</button>
+        </div>
+        <div id="game-info">
+          <p>Pot: $<span id="pot">0</span></p>
+          <p>Current Player: <span id="current-player">-</span></p>
+        </div>
+        <div id="ip-player" class="player-hand">
+          <h3>IP Player</h3>
+          <p class="chips">Chips: 0</p>    
+          <div id="ip-cards"></div>
         </div>
         <div id="message-log"></div>
     </div>
@@ -87,19 +93,20 @@
             };
 
             pokerSocket.onmessage = function(e) {
-                  const data = JSON.parse(e.data);
-                  if (data.type === 'game_state') {
-                      updateGameState(data.game_state);
-                  } else {
-                      console.log('Action:', data.action, 'User:', data.user_id);
-                      addMessage(`Player ${data.user_id} performed action: ${data.action}`);
-                  }
-              };
-
-            pokerSocket.onmessage = function(e) {
-                const data = JSON.parse(e.data);
-                console.log('Action:', data.action, 'User:', data.user_id);
-                addMessage(`Player ${data.user_id} performed action: ${data.action}`);
+              const data = JSON.parse(e.data);
+              console.log("Received message:", data)
+              if (data.type === 'game_state') {
+                updatePublicGameState(data.public_state);
+                updatePrivateGameState(data.private_state);
+              } else if (data.type === 'private_hand') {
+                  updatePlayerHand(data.player, data.hand);
+              } else if (data.last_action) {
+                  addMessage(`Player ${data.last_action.player} performed action: ${data.last_action.action}`);
+              } else if (data.error) {
+                  addMessage(`Error: ${data.error}`);
+              } else {
+                  console.log('Unknown message type:', data);
+              }
             };
 
             pokerSocket.onclose = function(e) {
@@ -109,20 +116,61 @@
             };
         }
 
-        function updateGameState(gameState) {
-            updatePlayerHand('oop', gameState.oop_player.hand);
-            updatePlayerHand('ip', gameState.ip_player.hand);
-            addMessage('New hand started. Cards dealt.');
+        function updatePublicGameState(publicState) {
+            // Update UI elements with public game state
+            if (publicState.pot !== undefined) {
+                document.getElementById('pot').textContent = publicState.pot;
+            }
+            if (publicState.current_player) {
+                document.getElementById('current-player').textContent = publicState.current_player;
+            }
+            // Update other public information...
         }
 
-        function updatePlayerHand(player, hand) {
-            const cardContainer = document.getElementById(`${player}-cards`);
+        function updatePrivateGameState(privateState) {
+            // Update UI elements with private game state
+            if (privateState.hand) {
+                updatePlayerHand('your-hand', privateState.hand);
+            }
+            if (privateState.chips !== undefined) {
+                document.getElementById('your-chips').textContent = privateState.chips;
+            }
+            // Update other private information...
+        }
+
+        function updateGameState(gameState) {
+            if (gameState.oop_player) {
+                updatePlayerInfo('oop', gameState.oop_player);
+            }
+            if (gameState.ip_player) {
+                updatePlayerInfo('ip', gameState.ip_player);
+            }
+            if (gameState.pot !== undefined) {
+                document.getElementById('pot').textContent = gameState.pot;
+            }
+            if (gameState.current_player) {
+                document.getElementById('current-player').textContent = gameState.current_player;
+            }
+            if (gameState.last_action) {
+                addMessage(`Player ${gameState.last_action.player} performed action: ${gameState.last_action.action}`);
+            }
+        }
+
+        function updatePlayerInfo(playerType, playerInfo) {
+            const playerElement = document.getElementById(`${playerType}-player`);
+            playerElement.querySelector('h3').textContent = `${playerType.toUpperCase()} Player (${playerInfo.name})`;
+            playerElement.querySelector('.chips').textContent = `Chips: ${playerInfo.chips}`;
+            // Don't update the hand here, as it should be done via private_hand messages
+        }
+
+        function updatePlayerHand(elementId, hand) {
+            const handElement = document.getElementById(elementId);
             cardContainer.innerHTML = '';
             hand.forEach(card => {
-                const cardElement = document.createElement('div');
+                const cardElement = document.createElement('span');
                 cardElement.className = 'card';
                 cardElement.textContent = card;
-                cardContainer.appendChild(cardElement);
+                handElement.appendChild(cardElement);
             });
         }
 
@@ -130,7 +178,8 @@
             if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
                 pokerSocket.send(JSON.stringify({
                     'action': action,
-                    'user_id': userId
+                    'user_id': userId,
+                    'room': roomName
                 }));
             } else {
                 console.error('WebSocket is not connected.');
@@ -147,6 +196,7 @@
 
         function startHand() {
             if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
+                console.log('Sending start_hand action')
                 pokerSocket.send(JSON.stringify({
                     'action': 'start_hand',
                     'user_id': userId

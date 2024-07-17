@@ -5,9 +5,12 @@ from phevaluator import evaluate_omaha_cards
 #### Player Class ####
 class Player:
     players = []
+    last_id = 0
 
     def __init__(self, name: str, chips: int) -> None:
         Player.players.append(self)
+        self.id = Player.last_id
+        Player.last_id += 1
         self.name: str = name
         self.chips: int = chips
         self.hand = []
@@ -53,6 +56,7 @@ class PokerGame:
         self.current_bet = 2
         self.num_actions = 0
         self.last_action = "bet"
+        self.valid_actions = None
         self.current_player = self.ip_player
         self.num_active_players = 2
         self.ip_committed = 1
