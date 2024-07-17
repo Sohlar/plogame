@@ -63,6 +63,18 @@ Key settings in `plo_project/settings.py`:
 
 For more details, refer to the [Django documentation](https://docs.djangoproject.com/en/5.0/).
 
+## TODO
+
+- **Finish Communication Protocol**: Finalize the communication protocol for real-time game updates and player interactions.
+- **Dynamic HTML Generation from WebSocket**: Implement dynamic HTML updates based on WebSocket messages to enhance the user experience.
+- **Model Training**: Develop and train machine learning models to improve game strategies and player experience.
+- **Automated Testing**: Implement comprehensive unit and integration tests to ensure code quality and reliability.
+- **Continuous Integration/Continuous Deployment (CI/CD)**: Set up CI/CD pipelines for automated testing and deployment.
+- **Scalability Improvements**: Optimize the application for scalability to handle a large number of concurrent users.
+- **Security Enhancements**: Conduct security audits and implement best practices to secure the application.
+- **Documentation**: Improve and expand project documentation for developers and users.
+
+
 ## License
 
 This project is licensed under the MIT License.
