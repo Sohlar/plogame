@@ -44,14 +44,50 @@ class Deck:
 
 class PokerGame:
     def __init__(self):
+        self.state = {
+            "pot": 0,
+            "community_cards": [],
+            "current_player": None,
+            "current_bet": 0,
+            "last_action": None,
+            "num_actions": 0,
+            "hand_over": False,
+            "waiting_for_action": False,
+            "valid_actions": None,
+            "oop_player": {"name": "OOP", "chips": 200, "hand": [], "committed": 0},
+            "ip_player": {
+                "name": "IP",
+                "chips": 200,
+                "hand": [],
+                "committed": 0,
+            },
+        }
         self.deck = Deck()
-        self.oop_player = Player(name="OOP", chips=200)
-        self.ip_player = Player(name="IP", chips=200)
         self.initialize_game_state()
 
     def initialize_game_state(self):
-        self.community_cards = []
+        self.state.update(
+            {
+                "pot": 3,
+                "community_cards": [],
+                "current_player": self.state["ip_player"],
+                "current_bet": 2,
+                "last_action": "bet",
+                "num_actions": 0,
+                "hand_over": False,
+                "waiting_for_action": False,
+                "valid_actions": None,
+                "oop_player": {"name": "OOP", "chips": 198, "hand": [], "committed": 2},
+                "ip_player": {
+                    "name": "IP",
+                    "chips": 199,
+                    "hand": [],
+                    "committed": 1,
+                },
+            }
+        )
         self.pot = 3
+        self.community_cards = []
         self.hand_over = False
         self.current_bet = 2
         self.num_actions = 0
@@ -68,6 +104,7 @@ class PokerGame:
         for player in [self.oop_player, self.ip_player]:
             player.hand = [self.deck.cards.pop() for _ in range(4)]
 
+    # Initializes game state
     def start_new_hand(self):
         self.initialize_game_state()
         self.reset_hands()
@@ -77,6 +114,8 @@ class PokerGame:
         self.ip_player.chips = 199
         self.deal_cards()
         return self.get_game_state()
+
+    # Returns Game state
 
     def play_hand(self):
         self.start_new_hand()
@@ -127,50 +166,15 @@ class PokerGame:
         self.hand_over = False
 
     def get_game_state(self):
-        return {
-            "pot": self.pot,
-            "community_cards": self.community_cards,
-            "current_player": self.current_player.name,
-            "current_bet": self.current_bet,
-            "last_action": self.last_action,
-            "num_actions": self.num_actions,
-            "hand_over": self.hand_over,
-            "waiting_for_action": self.waiting_for_action,
-            "valid_actions": self.valid_actions,
-            "oop_player": {
-                "name": self.oop_player.name,
-                "chips": self.oop_player.chips,
-                "hand": self.oop_player.hand,
-                "committed": self.oop_committed,
-            },
-            "ip_player": {
-                "name": self.ip_player.name,
-                "chips": self.ip_player.chips,
-                "hand": self.ip_player.hand,
-                "committed": self.ip_committed,
-            },
-        }
+        return self.state
 
     def get_public_game_state(self):
-        return {
-            "pot": self.pot,
-            "community_cards": self.community_cards,
-            "current_player": self.current_player.name,
-            "current_bet": self.current_bet,
-            "last_action": self.last_action,
-            "num_actions": self.num_actions,
-            "hand_over": self.hand_over,
-            "waiting_for_action": self.waiting_for_action,
-            "oop_player": {
-                "name": self.oop_player.name,
-                "chips": self.oop_player.chips,
-                "committed": self.oop_committed,
-            },
-            "ip_player": {
-                "name": self.ip_player.name,
-                "chips": self.ip_player.chips,
-                "committed": self.ip_committed,
-            },
+        public_state = self.get_game_state().copy
+        public_state["oop_player"] = {
+            k: v for k, v in public_state["oop_player"] if k != "hand"
+        }
+        public_state["ip_player"] = {
+            k: v for k, v in public_state["ip_player"] if k != "hand"
         }
 
     def get_private_game_state(self):
@@ -183,6 +187,9 @@ class PokerGame:
                 "hand": self.ip_player.hand,
             },
         }
+
+    def update_state(self, **kwargs):
+        self.state.update(kwargs)
 
     def get_player_action(self, valid_actions):
         while True:

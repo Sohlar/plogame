@@ -9,6 +9,10 @@ class PokerConsumer(AsyncWebsocketConsumer):
     # player id to consumer instance maps
     player_to_consumer = {}
 
+    functions = {
+        "start_hand": start_new_hand,
+    }
+
     async def connect(self):
         print("Attempting to connect")
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]

@@ -82,6 +82,10 @@
         const userId = 'player' + Math.floor(Math.random() * 1000);  // Generate a random player ID for this example
         let pokerSocket = null;
 
+        const handlers = {
+
+        }
+
         function connectWebSocket() {
             pokerSocket = new WebSocket(
                 'ws://' + window.location.host + '/ws/poker/table1/'
