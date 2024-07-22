@@ -51,6 +51,7 @@ class PokerGame:
             "current_bet": 0,
             "last_action": None,
             "num_actions": 0,
+            "num_active_players": 2,
             "hand_over": False,
             "waiting_for_action": False,
             "valid_actions": None,
@@ -76,6 +77,7 @@ class PokerGame:
                 "num_actions": 0,
                 "hand_over": False,
                 "waiting_for_action": False,
+                "num_active_players": 2,
                 "valid_actions": None,
                 "oop_player": {"name": "OOP", "chips": 198, "hand": [], "committed": 2},
                 "ip_player": {
@@ -86,33 +88,18 @@ class PokerGame:
                 },
             }
         )
-        self.pot = 3
-        self.community_cards = []
-        self.hand_over = False
-        self.current_bet = 2
-        self.num_actions = 0
-        self.last_action = "bet"
-        self.valid_actions = None
-        self.current_player = self.ip_player
-        self.num_active_players = 2
-        self.ip_committed = 1
-        self.oop_committed = 2
-        self.street = "preflop"
-        self.waiting_for_action = False
 
     def deal_cards(self):
-        for player in [self.oop_player, self.ip_player]:
-            player.hand = [self.deck.cards.pop() for _ in range(4)]
+        for player in [self.state["oop_player"], self.state["ip_player"]]:
+            player["hand"] = [self.deck.cards.pop() for _ in range(4)]
 
-    # Initializes game state
     def start_new_hand(self):
         self.initialize_game_state()
+        # send state to frontend
         self.reset_hands()
         self.deck.shuffle()
-        self.pot = 3
-        self.oop_player.chips = 198
-        self.ip_player.chips = 199
         self.deal_cards()
+        # send private state to each player
         return self.get_game_state()
 
     # Returns Game state
@@ -156,14 +143,14 @@ class PokerGame:
 
     def reset_hands(self):
         self.deck = Deck()
-        self.community_cards = []
-        self.pot = 0
-        self.oop_player.hand = []
-        self.ip_player.hand = []
-        self.current_bet = []
-        self.num_actions = 0
-        self.last_action = None
-        self.hand_over = False
+        self.state["community_cards"] = []
+        self.state["pot"] = 0
+        self.state["oop_player"]["hand"] = []
+        self.state["ip_player"]["hand"] = []
+        self.state["current_bet"] = []
+        self.state["num_actions"] = 0
+        self.state["last_action"] = None
+        self.state["hand_over"] = False
 
     def get_game_state(self):
         return self.state
@@ -209,286 +196,317 @@ class PokerGame:
                 print("Invalid action. Please try again.")
 
     def preflop_betting(self):
-        self.num_active_players = len(
-            [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
+        self.state["num_active_players"] = len(
+            [
+                p
+                for p in [self.state["oop_player"], self.state["ip_player"]]
+                if p["chips"] > 0
+            ]
         )
-        self.ip_committed, self.oop_committed = 1, 2
-        self.current_bet, self.num_actions = 2, 0
-        self.last_action = "bet"
-        self.current_player = self.ip_player
-        self.hand_over = False
+        self.state["ip_committed"], self.state["oop_committed"] = 1, 2
+        self.state["current_bet"], self.state["num_actions"] = 2, 0
+        self.state["last_action"] = "bet"
+        self.state["current_player"] = self.state["ip_player"]
+        self.state["hand_over"] = False
 
         while True:
             game_state = self.get_game_state()
 
-            if self.hand_over or self.num_active_players == 1:
-                self.current_player.chips += self.pot
-                game_state["message"] = f"{self.current_player.name} wins ${self.pot}"
-                game_state["hand_over"] = True
+            if self.state["hand_over"] or self.state["num_active_players"] == 1:
+                self.state["current_player"]["chips"] += self.state["pot"]
+                self.state["message"] = (
+                    f"{self.state['current_player']['name']} wins ${self.state['pot']}"
+                )
+                self.state["hand_over"] = True
                 return game_state
 
-            all_players_acted = self.num_actions >= self.num_active_players
-            all_bets_settled = self.oop_player.chips == self.ip_player.chips
+            all_players_acted = (
+                self.state["num_actions"] >= self.state["num_active_players"]
+            )
+            all_bets_settled = (
+                self.state["oop_player"]["chips"] == self.state["ip_player"]["chips"]
+            )
             if all_players_acted and all_bets_settled:
-                game_state["message"] = "Preflop betting complete"
+                self.state["message"] = "Preflop betting complete"
                 return game_state
 
-            # Instead of prompting for input, we'll return the game state
             valid_actions = self.get_valid_preflop_actions()
             action = self.get_player_action(valid_actions)
             self.process_preflop_action(action)
         return game_state
 
     def process_preflop_action(self, action):
-        # This method will be called from the server to process each action
-        if action not in self.get_valid_preflop_actions():
+        if self.state["action"] not in self.get_valid_preflop_actions():
             return {"error: Invalid Action"}
 
-        if action == "bet":
+        if self.state["action"] == "bet":
             self.handle_preflop_bet()
-        if action == "call":
+        if self.state["action"] == "call":
             self.handle_preflop_call()
-        if action == "check":
+        if self.state["action"] == "check":
             self.handle_preflop_check()
-        if action == "fold":
+        if self.state["action"] == "fold":
             self.handle_fold()
 
         self.switch_players()
 
     def get_valid_preflop_actions(self):
         # fmt: off
-        if self.oop_player.chips == 0 or self.ip_player.chips == 0: #Facing All in
+        if self.state['oop_player']['chips'] == 0 or self.state['ip_player']['chips'] == 0: #Facing All in
             return ["call", "fold"]
-        if self.current_player == self.ip_player and self.num_actions == 0: #Preflop Open
+        if self.state['current_player'] == self.state['ip_player'] and self.state['num_actions'] == 0: #Preflop Open
             return ["call", "bet", "fold"]
-        elif self.current_player == self.oop_player and self.last_action == "call": #Facing Open limp
+        elif self.state['current_player'] == self.state['oop_player'] and self.state['last_action'] == "call": #Facing Open limp
             return ["check", "bet"]
         else:
             return ["call", "bet", "fold"]
         # fmt: on
+        #
 
     def handle_preflop_bet(self):
-        is_allin, bet_amount = self.calculate_preflop_bet_size()
-        if not is_allin:
-            if self.current_player.name == self.ip_player.name:
-                self.current_player.chips -= bet_amount - self.ip_committed
-                self.pot += bet_amount - self.ip_committed
-                self.ip_committed = bet_amount
-                self.current_bet = bet_amount
+        self.state["is_allin"], self.state["bet_amount"] = (
+            self.calculate_preflop_bet_size()
+        )
+        if not self.state["is_allin"]:
+            if self.state["current_player"].name == self.state["ip_player"].name:
+                self.state["current_player"]["chips"] -= (
+                    self.state["bet_amount"] - self.state["ip_committed"]
+                )
+                self.state["pot"] += (
+                    self.state["bet_amount"] - self.state["ip_committed"]
+                )
+                self.state["ip_committed"] = self.state["bet_amount"]
+                self.state["current_bet"] = self.state["bet_amount"]
             else:
-                self.current_player.chips -= bet_amount - self.oop_committed
-                self.pot += bet_amount - self.oop_committed
-                self.oop_committed = bet_amount
-                self.current_bet = bet_amount
+                self.state["current_player"]["chips"] -= (
+                    self.state["bet_amount"] - self.state["oop_committed"]
+                )
+                self.state["pot"] += (
+                    self.state["bet_amount"] - self.state["oop_committed"]
+                )
+                self.state["oop_committed"] = self.state["bet_amount"]
+                self.state["current_bet"] = self.state["bet_amount"]
         else:
-            if self.current_player.name == self.ip_player.name:
-                self.ip_committed += self.current_player.chips
+            if self.state["current_player"].name == self.state["ip_player"].name:
+                self.state["ip_committed"] += self.state["current_player"]["chips"]
             else:
-                self.oop_committed += self.current_player.chips
-            self.pot += self.current_player.chips
-            self.current_player.chips = 0
-        self.num_actions += 1
-        self.last_action = "bet"
+                self.state["oop_committed"] += self.state["current_player"]["chips"]
+            self.state["pot"] += self.state["current_player"]["chips"]
+            self.state["current_player"]["chips"] = 0
+        self.state["num_actions"] += 1
+        self.state["last_action"] = "bet"
 
     def handle_preflop_call(self):
-        if self.current_player == self.ip_player and self.num_actions == 0:
-            self.current_player.chips -= 1
-            self.pot += 1
+        if (
+            self.state["current_player"] == self.state["ip_player"]
+            and self.state["num_actions"] == 0
+        ):
+            self.state["current_player"]["chips"] -= 1
+            self.state["pot"] += 1
         else:
-            if self.current_player.name == self.oop_player.name:
-                diff = self.ip_committed - self.oop_committed
-                self.oop_committed += diff
+            if self.state["current_player"].name == self.state["oop_player"].name:
+                diff = self.state["ip_committed"] - self.state["oop_committed"]
+                self.state["oop_committed"] += diff
             else:
-                diff = self.oop_committed - self.ip_committed
-                self.ip_committed += diff
-            self.current_player.chips -= diff
-            self.pot += diff
-        self.num_actions += 1
-        self.last_action = "call"
+                diff = self.state["oop_committed"] - self.state["ip_committed"]
+                self.state["ip_committed"] += diff
+            self.state["current_player"]["chips"] -= diff
+            self.state["pot"] += diff
+        self.state["num_actions"] += 1
+        self.state["last_action"] = "call"
 
     def handle_preflop_check(self):
-        if self.current_player == self.oop_player and self.last_action == "call":
-            self.num_actions += 1
-            self.last_action = "check"
+        if (
+            self.state["current_player"] == self.state["oop_player"]
+            and self.state["last_action"] == "call"
+        ):
+            self.state["num_actions"] += 1
+            self.state["last_action"] = "check"
 
     def calculate_preflop_bet_size(self):
-        all_in = False
-        is_raise = True
-        if is_raise:
+        self.state["all_in"] = False
+        self.state["is_raise"] = True
+        if self.state["is_raise"]:
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-            bet_size = 3 * self.current_bet
-        if self.current_player.chips < bet_size:
-            bet_size = self.current_player.chips
-            all_in = True
-
-        return all_in, bet_size
+            self.state["bet_size"] = 3 * self.state["current_bet"]
+        if self.state["current_player"]["chips"] < self.state["bet_size"]:
+            self.state["bet_size"] = self.state["current_player"]["chips"]
+            self.state["all_in"] = True
+        return self.state
 
     def postflop_betting(self, street):
-        self.num_active_players = len(
-            [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
+        self.state["num_active_players"] = len(
+            [
+                p
+                for p in [self.state["oop_player"], self.state["ip_player"]]
+                if p["chips"] > 0
+            ]
         )
-        self.ip_committed = 0
-        self.oop_committed = 0
-        self.current_bet = 0
-        self.num_actions = 0
-        self.current_player = self.oop_player
-        self.hand_over = False
-
+        self.state["ip_committed"] = 0
+        self.state["oop_committed"] = 0
+        self.state["current_bet"] = 0
+        self.state["num_actions"] = 0
+        self.state["current_player"] = self.state["oop_player"]
+        self.state["hand_over"] = False
         while True:
             game_state = self.get_game_state()
             game_state["street"] = street
-
-            if self.hand_over or self.num_active_players == 1:
-                self.current_player.chips += self.pot
+            if self.state["hand_over"] or self.state["num_active_players"] == 1:
+                self.state["current_player"]["chips"] += self.state["pot"]
                 return {
-                    "message": f"{self.current_player.name} wins ${self.pot}",
+                    "message": f"{self.state['current_player'].name} wins ${self.state['pot']}",
                     "hand_over": True,
                 }
-
-            all_players_acted = self.num_actions >= self.num_active_players
-            all_bets_settled = self.oop_player.chips == self.ip_player.chips
+            all_players_acted = (
+                self.state["num_actions"] >= self.state["num_active_players"]
+            )
+            all_bets_settled = (
+                self.state["oop_player"]["chips"] == self.state["ip_player"]["chips"]
+            )
             if all_players_acted and all_bets_settled:
                 game_state["message"] = f"{street.capitalize()} betting complete"
                 return game_state
-
             valid_actions = self.get_valid_postflop_actions()
             action = self.get_player_action(valid_actions)
             self.process_postflop_action(action)
         return game_state
 
     def process_postflop_action(self, action):
-        if action not in self.get_valid_postflop_actions():
+        if self.state["action"] not in self.get_valid_postflop_actions():
             return {"error": "Invalid Action"}
-
-        if action == "check":
+        if self.state["action"] == "check":
             self.handle_postflop_check()
-        elif action == "bet":
+        elif self.state["action"] == "bet":
             self.handle_postflop_bet()
-        elif action == "call":
+        elif self.state["action"] == "call":
             self.handle_postflop_call()
-        elif action == "fold":
+        elif self.state["action"] == "fold":
             self.handle_fold()
-
         self.switch_players()
 
     def get_valid_postflop_actions(self):
-        if self.oop_player.chips == 0 or self.ip_player.chips == 0:
+        if (
+            self.state["oop_player"]["chips"] == 0
+            or self.state["ip_player"]["chips"] == 0
+        ):
             return ["call", "fold"]
-        if self.current_bet == 0:
+        if self.state["current_bet"] == 0:
             return ["check", "bet", "fold"]
         else:
             return ["call", "bet", "fold"]
 
     def handle_postflop_bet(self):
-        is_allin, bet_amount = self.calculate_postflop_bet_size()
-        print(bet_amount)
-        if not is_allin:
-            if self.current_player.name == self.ip_player.name:
-                self.current_player.chips -= bet_amount
-                self.pot += bet_amount
-                self.ip_committed += bet_amount
-                self.current_bet = bet_amount
+        self.state["is_allin"], self.state["bet_amount"] = (
+            self.calculate_postflop_bet_size()
+        )
+        print(self.state["bet_amount"])
+        if not self.state["is_allin"]:
+            if self.state["current_player"].name == self.state["ip_player"].name:
+                self.state["current_player"]["chips"] -= self.state["bet_amount"]
+                self.state["pot"] += self.state["bet_amount"]
+                self.state["ip_committed"] += self.state["bet_amount"]
+                self.state["current_bet"] = self.state["bet_amount"]
             else:
-                self.current_player.chips -= bet_amount
-                self.pot += bet_amount
-                self.oop_committed += bet_amount
-                self.current_bet = bet_amount
+                self.state["current_player"]["chips"] -= self.state["bet_amount"]
+                self.state["pot"] += self.state["bet_amount"]
+                self.state["oop_committed"] += self.state["bet_amount"]
+                self.state["current_bet"] = self.state["bet_amount"]
         else:
-            if self.current_player == self.ip_player:
-                self.ip_committed += self.ip_player.chips
+            if self.state["current_player"] == self.state["ip_player"]:
+                self.state["ip_committed"] += self.state["ip_player"]["chips"]
             else:
-                self.oop_committed += self.oop_player.chips
-            self.current_bet = bet_amount
-            self.pot += self.current_player.chips
-            self.current_player.chips = 0
-        self.num_actions += 1
-        self.last_action = "bet"
+                self.state["oop_committed"] += self.state["oop_player"]["chips"]
+            self.state["current_bet"] = self.state["bet_amount"]
+            self.state["pot"] += self.state["current_player"]["chips"]
+            self.state["current_player"]["chips"] = 0
+        self.state["num_actions"] += 1
+        self.state["last_action"] = "bet"
 
     def handle_postflop_call(self):
-        call_amount = self.current_bet
-        if call_amount <= self.current_player.chips:
+        call_amount = self.state["current_bet"]
+        if call_amount <= self.state["current_player"]["chips"]:
             print("1")
-            print(self.current_player.chips)
+            print(self.state["current_player"]["chips"])
             print(call_amount)
-            self.current_player.chips -= call_amount
-            self.pot += call_amount
+            self.state["current_player"]["chips"] -= call_amount
+            self.state["pot"] += call_amount
         else:
             print("2")
             # This is prone to bug. Only works under equal starting stacks.
-            all_in_amount = self.current_player.chips
-            self.current_player.chips = 0
-            self.pot += all_in_amount
+            all_in_amount = self.state["current_player"]["chips"]
+            self.state["current_player"]["chips"] = 0
+            self.state["pot"] += all_in_amount
             difference = call_amount - all_in_amount
             """
             other_player = (
-                self.ip_player
-                if self.current_player == self.oop_player
-                else self.oop_player
+                self.state['ip_player']
+                if self.state['current_player'] == self.state['oop_player']
+                else self.state['oop_player']
             )
             other_player.chips += difference
-            self.pot -= difference
+            self.state['pot'] -= difference
             """
-        self.num_actions += 1
-        self.last_action = "call"
+        self.state["num_actions"] += 1
+        self.state["last_action"] = "call"
 
     def handle_postflop_check(self):
-        self.num_actions += 1
-        self.last_action = "check"
+        self.state["num_actions"] += 1
+        self.state["last_action"] = "check"
 
     def handle_fold(self):
-        self.num_active_players -= 1
-        self.hand_over = True
+        self.state["num_active_players"] -= 1
+        self.state["hand_over"] = True
 
     def calculate_postflop_bet_size(self):
         all_in = False
-        if self.last_action == "bet":
+        if self.state["last_action"] == "bet":
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-            bet_size = 2 * self.current_bet + self.pot
+            bet_size = 2 * self.state["current_bet"] + self.state["pot"]
         else:
             # If it's a standard bet, the bet size is equal to the current pot size
-            bet_size = self.pot
+            bet_size = self.state["pot"]
 
-        if self.current_player.chips < bet_size:
-            bet_size = self.current_player.chips
+        if self.state["current_player"]["chips"] < bet_size:
+            bet_size = self.state["current_player"]["chips"]
             all_in = True
 
         return all_in, bet_size
 
     def switch_players(self):
-        self.current_player = (
-            self.oop_player if self.current_player == self.ip_player else self.ip_player
+        self.state["current_player"] = (
+            self.state["oop_player"]
+            if self.state["current_player"] == self.state["ip_player"]
+            else self.state["ip_player"]
         )
 
     def determine_showdown_winner(self):
         # fmt: off
         ip_rank = evaluate_omaha_cards(
-            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
-            self.ip_player.hand[0], self.ip_player.hand[1], self.ip_player.hand[2], self.ip_player.hand[3],
+            self.state['community_cards'][0], self.state['community_cards'][1], self.state['community_cards'][2], self.state['community_cards'][3], self.state['community_cards'][4],
+            self.state['ip_player']['hand'][0], self.state['ip_player']['hand'][1], self.state['ip_player']['hand'][2], self.state['ip_player']['hand'][3],
         )
         oop_rank = evaluate_omaha_cards(
-            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
-            self.oop_player.hand[0], self.oop_player.hand[1], self.oop_player.hand[2], self.oop_player.hand[3],
+            self.state['community_cards'][0], self.state['community_cards'][1], self.state['community_cards'][2], self.state['community_cards'][3], self.state['community_cards'][4],
+            self.state['oop_player']['hand'][0], self.state['oop_player']['hand'][1], self.state['oop_player']['hand'][2], self.state['oop_player']['hand'][3],
         )
         # fmt: on
         result = {
-            "ip_hand": self.ip_player.hand,
-            "oop_hand": self.oop_player.hand,
-            "community_cards": self.community_cards,
-            "pot": self.pot,
+            "ip_hand": self.state["ip_player"]["hand"],
+            "oop_hand": self.state["oop_player"]["hand"],
+            "community_cards": self.state["community_cards"],
+            "pot": self.state["pot"],
         }
-
         if ip_rank < oop_rank:
             result["winner"] = "IP Player"
-            result["winning hand"] = self.ip_player.hand
-            self.ip_player.chips += self.pot
+            result["winning hand"] = self.state["ip_player"]["hand"]
+            self.state["ip_player"]["chips"] += self.state["pot"]
         elif oop_rank < ip_rank:
             result["winner"] = "OOP Player"
-            result["winning hand"] = self.oop_player.hand
-            self.oop_player.chips += self.pot
+            result["winning hand"] = self.state["oop_player"]["hand"]
+            self.state["oop_player"]["chips"] += self.state["pot"]
         else:
             result["winner"] = "chop"
             result["winning hand"] = None
-            self.ip_player.chips += self.pot / 2
-            self.oop_player.chips += self.pot / 2
-
+            self.state["ip_player"]["chips"] += self.state["pot"] / 2
+            self.state["oop_player"]["chips"] += self.state["pot"] / 2
         return result

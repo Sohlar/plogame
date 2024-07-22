@@ -49,30 +49,35 @@
             line-height: 70px;
             font-weight: bold;
         }
+        #community-cards {
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
     <div id="poker-table">
         <h2>Poker Table</h2>
-        <button id="start-hand-btn" onclick="startHand()">Start Hand</button>
+        <button id="start-hand-btn">Start Hand</button>
         <div id="oop-player" class="player-hand">
-          <h3>OOP Player</h3>
-          <p class="chips">Chips: 0</p>    
-          <div id="oop-cards"></div>
+            <h3>OOP Player</h3>
+            <p class="chips">Chips: 0</p>    
+            <div id="oop-cards"></div>
         </div>
+        <div id="community-cards"></div>
         <div id="player-actions">
             <button onclick="sendAction('check')">Check</button>
             <button onclick="sendAction('bet')">Bet</button>
             <button onclick="sendAction('fold')">Fold</button>
         </div>
         <div id="game-info">
-          <p>Pot: $<span id="pot">0</span></p>
-          <p>Current Player: <span id="current-player">-</span></p>
+            <p>Pot: $<span id="pot">0</span></p>
+            <p>Current Player: <span id="current-player">-</span></p>
+            <p>Current Bet: $<span id="current-bet">0</span></p>
         </div>
         <div id="ip-player" class="player-hand">
-          <h3>IP Player</h3>
-          <p class="chips">Chips: 0</p>    
-          <div id="ip-cards"></div>
+            <h3>IP Player</h3>
+            <p class="chips">Chips: 0</p>    
+            <div id="ip-cards"></div>
         </div>
         <div id="message-log"></div>
     </div>
@@ -82,13 +87,9 @@
         const userId = 'player' + Math.floor(Math.random() * 1000);  // Generate a random player ID for this example
         let pokerSocket = null;
 
-        const handlers = {
-
-        }
-
         function connectWebSocket() {
             pokerSocket = new WebSocket(
-                'ws://' + window.location.host + '/ws/poker/table1/'
+                'ws://' + window.location.host + '/ws/poker/' + roomName + '/'
             );
 
             pokerSocket.onopen = function(e) {
@@ -97,20 +98,17 @@
             };
 
             pokerSocket.onmessage = function(e) {
-              const data = JSON.parse(e.data);
-              console.log("Received message:", data)
-              if (data.type === 'game_state') {
-                updatePublicGameState(data.public_state);
-                updatePrivateGameState(data.private_state);
-              } else if (data.type === 'private_hand') {
-                  updatePlayerHand(data.player, data.hand);
-              } else if (data.last_action) {
-                  addMessage(`Player ${data.last_action.player} performed action: ${data.last_action.action}`);
-              } else if (data.error) {
-                  addMessage(`Error: ${data.error}`);
-              } else {
-                  console.log('Unknown message type:', data);
-              }
+                const data = JSON.parse(e.data);
+                console.log("Received message:", data);
+                if (data.type === 'game_state') {
+                    updateGameState(data);
+                } else if (data.type === 'private_hand') {
+                    updatePlayerHand(data.player, data.hand);
+                } else if (data.error) {
+                    addMessage(`Error: ${data.error}`);
+                } else {
+                    console.log('Unknown message type:', data);
+                }
             };
 
             pokerSocket.onclose = function(e) {
@@ -118,28 +116,6 @@
                 addMessage('Disconnected from the poker table. Trying to reconnect...');
                 setTimeout(connectWebSocket, 2000);  // Try to reconnect after 2 seconds
             };
-        }
-
-        function updatePublicGameState(publicState) {
-            // Update UI elements with public game state
-            if (publicState.pot !== undefined) {
-                document.getElementById('pot').textContent = publicState.pot;
-            }
-            if (publicState.current_player) {
-                document.getElementById('current-player').textContent = publicState.current_player;
-            }
-            // Update other public information...
-        }
-
-        function updatePrivateGameState(privateState) {
-            // Update UI elements with private game state
-            if (privateState.hand) {
-                updatePlayerHand('your-hand', privateState.hand);
-            }
-            if (privateState.chips !== undefined) {
-                document.getElementById('your-chips').textContent = privateState.chips;
-            }
-            // Update other private information...
         }
 
         function updateGameState(gameState) {
@@ -153,7 +129,13 @@
                 document.getElementById('pot').textContent = gameState.pot;
             }
             if (gameState.current_player) {
-                document.getElementById('current-player').textContent = gameState.current_player;
+                document.getElementById('current-player').textContent = gameState.current_player.name;
+            }
+            if (gameState.current_bet !== undefined) {
+                document.getElementById('current-bet').textContent = gameState.current_bet;
+            }
+            if (gameState.community_cards) {
+                updateCommunityCards(gameState.community_cards);
             }
             if (gameState.last_action) {
                 addMessage(`Player ${gameState.last_action.player} performed action: ${gameState.last_action.action}`);
@@ -164,17 +146,28 @@
             const playerElement = document.getElementById(`${playerType}-player`);
             playerElement.querySelector('h3').textContent = `${playerType.toUpperCase()} Player (${playerInfo.name})`;
             playerElement.querySelector('.chips').textContent = `Chips: ${playerInfo.chips}`;
-            // Don't update the hand here, as it should be done via private_hand messages
+            updatePlayerHand(`${playerType}-cards`, playerInfo.hand);
         }
 
         function updatePlayerHand(elementId, hand) {
             const handElement = document.getElementById(elementId);
-            cardContainer.innerHTML = '';
+            handElement.innerHTML = '';
             hand.forEach(card => {
                 const cardElement = document.createElement('span');
                 cardElement.className = 'card';
                 cardElement.textContent = card;
                 handElement.appendChild(cardElement);
+            });
+        }
+
+        function updateCommunityCards(communityCards) {
+            const communityCardsElement = document.getElementById('community-cards');
+            communityCardsElement.innerHTML = '<h3>Community Cards</h3>';
+            communityCards.forEach(card => {
+                const cardElement = document.createElement('span');
+                cardElement.className = 'card';
+                cardElement.textContent = card;
+                communityCardsElement.appendChild(cardElement);
             });
         }
 
@@ -198,18 +191,18 @@
             messageLog.scrollTop = messageLog.scrollHeight;
         }
 
-        function startHand() {
+        document.getElementById('start-hand-btn').addEventListener('click', function() {
             if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
-                console.log('Sending start_hand action')
+                console.log('Sending start_hand action');
                 pokerSocket.send(JSON.stringify({
                     'action': 'start_hand',
-                    'user_id': userId
+                    'user_id': userId,
+                    'room': roomName
                 }));
             } else {
                 console.error('WebSocket is not connected.');
             }
-        }
-
+        });
 
         // Connect to WebSocket when the page loads
         connectWebSocket();
