@@ -2,6 +2,7 @@ import secrets
 from phevaluator import evaluate_omaha_cards
 
 
+# fmt: off
 #### Player Class ####
 class Player:
     players = []
@@ -36,7 +37,6 @@ class Deck:
             "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "Th", "Jh", "Qh", "Kh", "Ah", 
             "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "Ts", "Js", "Qs", "Ks", "As",
         ]
-        # fmt: on
 
     def shuffle(self):
         secrets.SystemRandom().shuffle(self.cards)
@@ -64,14 +64,13 @@ class PokerGame:
             },
         }
         self.deck = Deck()
-        self.initialize_game_state()
 
     def initialize_game_state(self):
         self.state.update(
             {
+                "street": "preflop",
                 "pot": 3,
                 "community_cards": [],
-                "current_player": self.state["ip_player"],
                 "current_bet": 2,
                 "last_action": "bet",
                 "num_actions": 0,
@@ -94,11 +93,16 @@ class PokerGame:
             player["hand"] = [self.deck.cards.pop() for _ in range(4)]
 
     def start_new_hand(self):
+        print("Starting init_game_state() \n")
         self.initialize_game_state()
+        print("Finished init_game_state() \n")
         # send state to frontend
-        self.reset_hands()
+        # self.reset_hands()
         self.deck.shuffle()
+        print("Starting deal_cards() \n")
         self.deal_cards()
+        print("Finished deal_cards() \n")
+        self.state["current_player"] = self.state["ip_player"]
         # send private state to each player
         return self.get_game_state()
 
@@ -251,7 +255,6 @@ class PokerGame:
         self.switch_players()
 
     def get_valid_preflop_actions(self):
-        # fmt: off
         if self.state['oop_player']['chips'] == 0 or self.state['ip_player']['chips'] == 0: #Facing All in
             return ["call", "fold"]
         if self.state['current_player'] == self.state['ip_player'] and self.state['num_actions'] == 0: #Preflop Open
@@ -260,37 +263,38 @@ class PokerGame:
             return ["check", "bet"]
         else:
             return ["call", "bet", "fold"]
-        # fmt: on
         #
 
     def handle_preflop_bet(self):
-        self.state["is_allin"], self.state["bet_amount"] = (
-            self.calculate_preflop_bet_size()
-        )
-        if not self.state["is_allin"]:
-            if self.state["current_player"].name == self.state["ip_player"].name:
+        self.calculate_preflop_bet_size()
+        if not self.state["all_in"]:
+            if self.state["current_player"]["name"] == self.state["ip_player"]["name"]:
                 self.state["current_player"]["chips"] -= (
-                    self.state["bet_amount"] - self.state["ip_committed"]
+                    self.state["bet_amount"] - self.state["ip_player"]["committed"]
                 )
                 self.state["pot"] += (
-                    self.state["bet_amount"] - self.state["ip_committed"]
+                    self.state["bet_amount"] - self.state["ip_player"]["committed"]
                 )
-                self.state["ip_committed"] = self.state["bet_amount"]
+                self.state["ip_player"]["committed"] = self.state["bet_amount"]
                 self.state["current_bet"] = self.state["bet_amount"]
             else:
                 self.state["current_player"]["chips"] -= (
-                    self.state["bet_amount"] - self.state["oop_committed"]
+                    self.state["bet_amount"] - self.state["oop_player"]["committed"]
                 )
                 self.state["pot"] += (
-                    self.state["bet_amount"] - self.state["oop_committed"]
+                    self.state["bet_amount"] - self.state["oop_player"]["committed"]
                 )
-                self.state["oop_committed"] = self.state["bet_amount"]
+                self.state["oop_player"]["oop_committed"] = self.state["bet_amount"]
                 self.state["current_bet"] = self.state["bet_amount"]
         else:
-            if self.state["current_player"].name == self.state["ip_player"].name:
-                self.state["ip_committed"] += self.state["current_player"]["chips"]
+            if self.state["current_player"]["name"] == self.state["ip_player"]["name"]:
+                self.state["ipp_player"]["committed"] += self.state["current_player"][
+                    "chips"
+                ]
             else:
-                self.state["oop_committed"] += self.state["current_player"]["chips"]
+                self.state["oop_player"]["committed"] += self.state["current_player"][
+                    "chips"
+                ]
             self.state["pot"] += self.state["current_player"]["chips"]
             self.state["current_player"]["chips"] = 0
         self.state["num_actions"] += 1
@@ -304,14 +308,15 @@ class PokerGame:
             self.state["current_player"]["chips"] -= 1
             self.state["pot"] += 1
         else:
-            if self.state["current_player"].name == self.state["oop_player"].name:
-                diff = self.state["ip_committed"] - self.state["oop_committed"]
-                self.state["oop_committed"] += diff
+            if self.state["current_player"]["name"] == self.state["oop_player"]["name"]:
+                diff = self.state["ip_player"]["committed"] - self.state["oop_player"]["committed"]
+                self.state["oop_player"]["committed"] += diff
             else:
-                diff = self.state["oop_committed"] - self.state["ip_committed"]
-                self.state["ip_committed"] += diff
+                diff = self.state["oop_player"]["committed"] - self.state["ip_player"]["committed"]
+                self.state["ip_player"]["committed"] += diff
             self.state["current_player"]["chips"] -= diff
             self.state["pot"] += diff
+            self.state["street"] = "flop"
         self.state["num_actions"] += 1
         self.state["last_action"] = "call"
 
@@ -328,11 +333,10 @@ class PokerGame:
         self.state["is_raise"] = True
         if self.state["is_raise"]:
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-            self.state["bet_size"] = 3 * self.state["current_bet"]
-        if self.state["current_player"]["chips"] < self.state["bet_size"]:
-            self.state["bet_size"] = self.state["current_player"]["chips"]
+            self.state["bet_amount"] = 3 * self.state["current_bet"]
+        if self.state["current_player"]["chips"] < self.state["bet_amount"]:
+            self.state["bet_amount"] = self.state["current_player"]["chips"]
             self.state["all_in"] = True
-        return self.state
 
     def postflop_betting(self, street):
         self.state["num_active_players"] = len(
@@ -354,7 +358,7 @@ class PokerGame:
             if self.state["hand_over"] or self.state["num_active_players"] == 1:
                 self.state["current_player"]["chips"] += self.state["pot"]
                 return {
-                    "message": f"{self.state['current_player'].name} wins ${self.state['pot']}",
+                    "message": f"{self.state['current_player']['name']} wins ${self.state['pot']}",
                     "hand_over": True,
                 }
             all_players_acted = (
@@ -401,7 +405,7 @@ class PokerGame:
         )
         print(self.state["bet_amount"])
         if not self.state["is_allin"]:
-            if self.state["current_player"].name == self.state["ip_player"].name:
+            if self.state["current_player"]["name"] == self.state["ip_player"]["name"]:
                 self.state["current_player"]["chips"] -= self.state["bet_amount"]
                 self.state["pot"] += self.state["bet_amount"]
                 self.state["ip_committed"] += self.state["bet_amount"]
@@ -480,7 +484,6 @@ class PokerGame:
         )
 
     def determine_showdown_winner(self):
-        # fmt: off
         ip_rank = evaluate_omaha_cards(
             self.state['community_cards'][0], self.state['community_cards'][1], self.state['community_cards'][2], self.state['community_cards'][3], self.state['community_cards'][4],
             self.state['ip_player']['hand'][0], self.state['ip_player']['hand'][1], self.state['ip_player']['hand'][2], self.state['ip_player']['hand'][3],
@@ -489,7 +492,6 @@ class PokerGame:
             self.state['community_cards'][0], self.state['community_cards'][1], self.state['community_cards'][2], self.state['community_cards'][3], self.state['community_cards'][4],
             self.state['oop_player']['hand'][0], self.state['oop_player']['hand'][1], self.state['oop_player']['hand'][2], self.state['oop_player']['hand'][3],
         )
-        # fmt: on
         result = {
             "ip_hand": self.state["ip_player"]["hand"],
             "oop_hand": self.state["oop_player"]["hand"],

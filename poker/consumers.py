@@ -69,8 +69,15 @@ class PokerConsumer(AsyncWebsocketConsumer):
                 )
 
     async def send_game_update(self, game_state):
-        await self.send_private_hands(game_state)
-        await self.send_public_game_state(game_state)
+        # await self.send_private_hands(game_state)
+        # await self.send_public_game_state(game_state)
+        await self.send_total_game_state(game_state)
+
+    async def send_total_game_state(self, game_state):
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {"type": "game_state_update", "game_state": game_state},
+        )
 
     async def send_private_hands(self, game_state):
         for player in [game_state["oop_player"], game_state["ip_player"]]:

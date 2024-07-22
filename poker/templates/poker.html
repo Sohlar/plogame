@@ -66,6 +66,7 @@
         <div id="community-cards"></div>
         <div id="player-actions">
             <button onclick="sendAction('check')">Check</button>
+            <button onclick="sendAction('call')">Call</button>
             <button onclick="sendAction('bet')">Bet</button>
             <button onclick="sendAction('fold')">Fold</button>
         </div>
@@ -100,6 +101,7 @@
             pokerSocket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
                 console.log("Received message:", data);
+                console.log(data.type)
                 if (data.type === 'game_state') {
                     updateGameState(data);
                 } else if (data.type === 'private_hand') {
@@ -119,6 +121,7 @@
         }
 
         function updateGameState(gameState) {
+          console.log(gameState)
             if (gameState.oop_player) {
                 updatePlayerInfo('oop', gameState.oop_player);
             }
@@ -150,6 +153,7 @@
         }
 
         function updatePlayerHand(elementId, hand) {
+            console.log(hand)
             const handElement = document.getElementById(elementId);
             handElement.innerHTML = '';
             hand.forEach(card => {
