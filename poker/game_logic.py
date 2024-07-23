@@ -109,8 +109,9 @@ class PokerGame:
     # Returns Game state
 
     def play_hand(self):
-        self.start_new_hand()
-        game_state = self.preflop_betting()
+        game_state = self.start_new_hand()
+
+        self.preflop_betting()
         if game_state["hand_over"]:
             return game_state
 
@@ -200,19 +201,6 @@ class PokerGame:
                 print("Invalid action. Please try again.")
 
     def preflop_betting(self):
-        self.state["num_active_players"] = len(
-            [
-                p
-                for p in [self.state["oop_player"], self.state["ip_player"]]
-                if p["chips"] > 0
-            ]
-        )
-        self.state["ip_committed"], self.state["oop_committed"] = 1, 2
-        self.state["current_bet"], self.state["num_actions"] = 2, 0
-        self.state["last_action"] = "bet"
-        self.state["current_player"] = self.state["ip_player"]
-        self.state["hand_over"] = False
-
         while True:
             game_state = self.get_game_state()
 
@@ -222,7 +210,8 @@ class PokerGame:
                     f"{self.state['current_player']['name']} wins ${self.state['pot']}"
                 )
                 self.state["hand_over"] = True
-                return game_state
+                yield game_state
+                game_state
 
             all_players_acted = (
                 self.state["num_actions"] >= self.state["num_active_players"]
@@ -232,12 +221,13 @@ class PokerGame:
             )
             if all_players_acted and all_bets_settled:
                 self.state["message"] = "Preflop betting complete"
-                return game_state
+                yield game_state
+                return
 
             valid_actions = self.get_valid_preflop_actions()
-            action = self.get_player_action(valid_actions)
+            action = await self.get_player_action(valid_actions)
             self.process_preflop_action(action)
-        return game_state
+            yield game_state
 
     def process_preflop_action(self, action):
         if self.state["action"] not in self.get_valid_preflop_actions():

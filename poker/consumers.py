@@ -42,8 +42,8 @@ class PokerConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"error": "Invalid action"}))
 
     async def start_new_hand(self):
-        game_state = self.game.start_new_hand()
-        await self.send_game_update(game_state)
+        async for state in self.game.play_hand():
+            await self.send_game_update(state)
 
     async def process_action(self, action):
         self.game.state["action"] = action
