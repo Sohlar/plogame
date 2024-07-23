@@ -1,4 +1,5 @@
 import secrets
+import asyncio
 import logging
 from phevaluator import evaluate_omaha_cards
 
@@ -94,27 +95,23 @@ class PokerGame:
             player["hand"] = [self.deck.cards.pop() for _ in range(4)]
 
     def start_new_hand(self):
-        print("Starting init_game_state() \n")
         self.initialize_game_state()
-        print("Finished init_game_state() \n")
         # send state to frontend
         # self.reset_hands()
         self.deck.shuffle()
-        print("Starting deal_cards() \n")
         self.deal_cards()
-        print("Finished deal_cards() \n")
         self.state["current_player"] = self.state["ip_player"]
         return self.get_game_state()
 
     # Returns Game state
 
     async def play_hand(self):
-        logging.info("Starting play hand")
+        logging.info("LOGIC Starting play hand")
         init_state = self.start_new_hand()
-        logging.info(f"Initial State: {init_state}")
+        logging.info(f"LOGIC Initial State: {init_state}")
         yield init_state
 
-        logging.info("Entering preflop betting")
+        logging.info("LOGIC Entering preflop betting")
         async for state in self.preflop_betting():
             yield state
 

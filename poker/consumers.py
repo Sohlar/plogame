@@ -44,34 +44,32 @@ class PokerConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"error": "Invalid action"}))
 
     async def start_new_hand(self):
-        logging.info("Starting new hand")
+        logging.info("CONSUMER Starting new hand")
         async for state in self.game.play_hand():
-            logging.info(f"Received game state: {state}")
+            logging.info(f"CONSUMER Received game state")
             await self.send_game_update(state)
-            logging.info("Sent Game Update")
+            logging.info("CONSUMER Sent Game Update")
             await asyncio.sleep(0.1)
 
     async def get_player_action(self, valid_actions):
-       # Send a message to the client requesting an action
-       await self.send(text_data=json.dumps({
-           "type": "request_action",
-           "valid_actions": valid_actions
-       }))
-       # Wait for the client's response
-       response = await self.receive()
-       return json.loads(response)["action"]
-   
-
+        # Send a message to the client requesting an action
+        await self.send(
+            text_data=json.dumps(
+                {"type": "request_action", "valid_actions": valid_actions}
+            )
+        )
+        # Wait for the client's response
+        response = await self.receive()
+        return json.loads(response)["action"]
 
     async def send_game_update(self, game_state):
-        logging.info(f"Sending Game Update: {game_state}")
-        #await self.send_total_game_state(game_state)
-        await self.send(text_data=json.dumps({
-            "type": "game_state",
-            "game_state": game_state
-        }))
-        logging.info("Game Update Sent")
-        #add small delay
+        logging.info(f"CONSUMER Sending Game Update: {game_state}")
+        # await self.send_total_game_state(game_state)
+        await self.send(
+            text_data=json.dumps({"type": "game_state", "game_state": game_state})
+        )
+        logging.info("CONSUMER Game Update Sent")
+        # add small delay
         await asyncio.sleep(0.1)
 
     async def send_total_game_state(self, game_state):
@@ -79,7 +77,7 @@ class PokerConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             {"type": "game_state_update", "game_state": game_state},
         )
-        #wait for update
+        # wait for update
         await self.channel_layer.group_send(
             self.room_group_name,
             {"type": "sync_marker", "id": id(game_state)},

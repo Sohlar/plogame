@@ -104,7 +104,7 @@
                 if (data.type === 'game_state') {
                     console.log("Updating game state:", data)
                     updateGameState(data);
-                    pockerSocket.send(JSON.stringify({action: "ack_state", id: data.id}));
+                    pokerSocket.send(JSON.stringify({action: "ack_state", id: data.id}));
                 } else if (data.type == 'sync') {
                     pockerSocket.send(JSON.stringify({action: "ack_state", id: data.id}));
                 } else if (data.type === 'private_hand') {
@@ -136,25 +136,26 @@
         }
 
         function updateGameState(gameState) {
-            console.log("Updating the UI with game state:", gameState)
-            document.getElementById('pot').textContent = gameState.pot;
-            document.getElementById('current-player').textContent = gameState.current_player ? gameState.current_player.name : '-';
-            document.getElementById('current-bet').textContent = gameState.current_bet;
+            let game_state = gameState.game_state
+            console.log("Updating the UI with game state:", game_state)
+            document.getElementById('pot').textContent = game_state.pot;
+            document.getElementById('current-player').textContent = game_state.current_player ? game_state.current_player.name : '-';
+            document.getElementById('current-bet').textContent = game_state.current_bet;
 
-            updatePlayerInfo('oop', gameState.oop_player);
-            updatePlayerInfo('ip', gameState.ip_player);
+            updatePlayerInfo('oop', game_state.oop_player);
+            updatePlayerInfo('ip', game_state.ip_player);
 
-            updateCommunityCards(gameState.community_cards);
+            updateCommunityCards(game_state.community_cards);
 
-            if (gameState.last_action) {
-                addMessage(`Last action: ${gameState.last_action}`);
+            if (game_state.last_action) {
+                addMessage(`Last action: ${game_state.last_action}`);
             }
 
-            addMessage(`Current street: ${gameState.street}`);
+            addMessage(`Current street: ${game_state.street}`);
 
             // Update UI based on game state
             document.getElementById('community-cards').style.display = 
-                ['flop', 'turn', 'river'].includes(gameState.street) ? 'block' : 'none';
+                ['flop', 'turn', 'river'].includes(game_state.street) ? 'block' : 'none';
 
             // Disable all action buttons by default
             document.querySelectorAll('#player-actions button').forEach(button => {
@@ -164,6 +165,8 @@
         }
         function updatePlayerInfo(playerType, playerInfo) {
             const playerElement = document.getElementById(`${playerType}-player`);
+            console.log("BAFIUBF")
+            console.log(playerInfo)
             playerElement.querySelector('h3').textContent = `${playerType.toUpperCase()} Player (${playerInfo.name})`;
             playerElement.querySelector('.chips').textContent = `Chips: ${playerInfo.chips}`;
             updatePlayerHand(`${playerType}-cards`, playerInfo.hand);
