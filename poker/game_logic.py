@@ -1,4 +1,5 @@
 import secrets
+import logging
 from phevaluator import evaluate_omaha_cards
 
 
@@ -103,32 +104,37 @@ class PokerGame:
         self.deal_cards()
         print("Finished deal_cards() \n")
         self.state["current_player"] = self.state["ip_player"]
-        # send private state to each player
         return self.get_game_state()
 
     # Returns Game state
 
-    def play_hand(self):
-        game_state = self.start_new_hand()
+    async def play_hand(self):
+        logging.info("Starting play hand")
+        init_state = self.start_new_hand()
+        logging.info(f"Initial State: {init_state}")
+        yield init_state
 
-        self.preflop_betting()
-        if game_state["hand_over"]:
-            return game_state
+        logging.info("Entering preflop betting")
+        async for state in self.preflop_betting():
+            yield state
 
-        print("Entering flop")
-        game_state = self.deal_flop()
-        if game_state["hand_over"]:
-            return game_state
+        if not self.state["hand_over"]:
+           yield self.deal_flop()
+           async for state in self.postflop_betting("flop"):
+               yield state
 
-        game_state = self.deal_turn()
-        if game_state["hand_over"]:
-            return game_state
+        if not self.state["hand_over"]:
+            yield self.deal_turn()
+            async for state in self.postflop_betting("turn"):
+                yield state
 
-        game_state = self.deal_river()
-        if game_state["hand_over"]:
-            return game_state
+        if not self.state["hand_over"]:
+            yield self.deal_river()
+            async for state in self.postflop_betting("river"):
+                yield state
 
-        return self.determine_showdown_winner()
+        if not self.state["hand_over"]:
+            yield self.determine_showdown_winner()
 
     def deal_flop(self):
         self.deal_community_cards(3)
@@ -184,23 +190,9 @@ class PokerGame:
         self.state.update(kwargs)
 
     def get_player_action(self, valid_actions):
-        while True:
-            print(f"\nCurrent player: {self.current_player.name}")
-            print(f"Pot: ${self.pot}")
-            print(f"Current bet: ${self.current_bet}")
-            print(f"IP committed: ${self.ip_committed}")
-            print(f"OOP committed: ${self.oop_committed}")
-            print(f"Your chips: ${self.current_player.chips}")
-            print(f"Valid actions: {', '.join(valid_actions)}")
+        raise NotImplementedError("get_player_action must be implemented")
 
-            action = input(f"{self.current_player.name}, choose an action: ").lower()
-
-            if action in valid_actions:
-                return action
-            else:
-                print("Invalid action. Please try again.")
-
-    def preflop_betting(self):
+    async def preflop_betting(self):
         while True:
             game_state = self.get_game_state()
 
@@ -219,15 +211,15 @@ class PokerGame:
             all_bets_settled = (
                 self.state["oop_player"]["chips"] == self.state["ip_player"]["chips"]
             )
-            if all_players_acted and all_bets_settled:
+            yield self.get_game_state()
+            if self.state["hand_over"] or all_players_acted and all_bets_settled:
                 self.state["message"] = "Preflop betting complete"
-                yield game_state
                 return
 
-            valid_actions = self.get_valid_preflop_actions()
-            action = await self.get_player_action(valid_actions)
+            self.state["valid_actions"] = self.get_valid_preflop_actions()
+            yield self.state["valid_actions"]
+            action = await self.get_player_action(self.state["valid_actions"])
             self.process_preflop_action(action)
-            yield game_state
 
     def process_preflop_action(self, action):
         if self.state["action"] not in self.get_valid_preflop_actions():

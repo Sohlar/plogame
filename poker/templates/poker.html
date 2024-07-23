@@ -101,12 +101,19 @@
             pokerSocket.onmessage = function(e) {
                 const data = JSON.parse(e.data);
                 console.log("Received message:", data);
-                console.log(data.type)
                 if (data.type === 'game_state') {
+                    console.log("Updating game state:", data)
                     updateGameState(data);
+                    pockerSocket.send(JSON.stringify({action: "ack_state", id: data.id}));
+                } else if (data.type == 'sync') {
+                    pockerSocket.send(JSON.stringify({action: "ack_state", id: data.id}));
                 } else if (data.type === 'private_hand') {
                     updatePlayerHand(data.player, data.hand);
+                } else if (data.type == 'request_action') {
+                    console.log("Handling action request:", data);
+                    handleActionRequest(data.valid_actions);
                 } else if (data.error) {
+                    console.error("Received error:", data.error);
                     addMessage(`Error: ${data.error}`);
                 } else {
                     console.log('Unknown message type:', data);
@@ -120,31 +127,41 @@
             };
         }
 
-        function updateGameState(gameState) {
-          console.log(gameState)
-            if (gameState.oop_player) {
-                updatePlayerInfo('oop', gameState.oop_player);
-            }
-            if (gameState.ip_player) {
-                updatePlayerInfo('ip', gameState.ip_player);
-            }
-            if (gameState.pot !== undefined) {
-                document.getElementById('pot').textContent = gameState.pot;
-            }
-            if (gameState.current_player) {
-                document.getElementById('current-player').textContent = gameState.current_player.name;
-            }
-            if (gameState.current_bet !== undefined) {
-                document.getElementById('current-bet').textContent = gameState.current_bet;
-            }
-            if (gameState.community_cards) {
-                updateCommunityCards(gameState.community_cards);
-            }
-            if (gameState.last_action) {
-                addMessage(`Player ${gameState.last_action.player} performed action: ${gameState.last_action.action}`);
-            }
+        function handleActionRequest(validActions) {
+          // Enable only valid action buttons
+          document.querySelectorAll('#player-actions button').forEach(button => {
+              button.disabled = !validActions.includes(button.dataset.action);
+          });
+          addMessage("It's your turn. Please select an action.");
         }
 
+        function updateGameState(gameState) {
+            console.log("Updating the UI with game state:", gameState)
+            document.getElementById('pot').textContent = gameState.pot;
+            document.getElementById('current-player').textContent = gameState.current_player ? gameState.current_player.name : '-';
+            document.getElementById('current-bet').textContent = gameState.current_bet;
+
+            updatePlayerInfo('oop', gameState.oop_player);
+            updatePlayerInfo('ip', gameState.ip_player);
+
+            updateCommunityCards(gameState.community_cards);
+
+            if (gameState.last_action) {
+                addMessage(`Last action: ${gameState.last_action}`);
+            }
+
+            addMessage(`Current street: ${gameState.street}`);
+
+            // Update UI based on game state
+            document.getElementById('community-cards').style.display = 
+                ['flop', 'turn', 'river'].includes(gameState.street) ? 'block' : 'none';
+
+            // Disable all action buttons by default
+            document.querySelectorAll('#player-actions button').forEach(button => {
+                button.disabled = true;
+            });
+            console.log("Finished updating UI")
+        }
         function updatePlayerInfo(playerType, playerInfo) {
             const playerElement = document.getElementById(`${playerType}-player`);
             playerElement.querySelector('h3').textContent = `${playerType.toUpperCase()} Player (${playerInfo.name})`;

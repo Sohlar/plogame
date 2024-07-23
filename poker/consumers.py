@@ -1,4 +1,6 @@
 import json
+import asyncio
+import logging
 from channels.generic.websocket import AsyncWebsocketConsumer
 from .game_logic import PokerGame
 
@@ -42,42 +44,49 @@ class PokerConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"error": "Invalid action"}))
 
     async def start_new_hand(self):
+        logging.info("Starting new hand")
         async for state in self.game.play_hand():
+            logging.info(f"Received game state: {state}")
             await self.send_game_update(state)
+            logging.info("Sent Game Update")
+            await asyncio.sleep(0.1)
 
-    async def process_action(self, action):
-        self.game.state["action"] = action
-        if self.game.state["street"] == "preflop":
-            valid_actions = self.game.get_valid_preflop_actions()
-            if action in valid_actions:
-                self.game.process_preflop_action(action)
-                game_state = self.game.state
-                await self.send_game_update(game_state)
-            else:
-                await self.send(
-                    text_data=json.dumps({"error": "Invalid preflop action"})
-                )
-        else:
-            valid_actions = self.game.get_valid_postflop_actions()
-            if action in valid_actions:
-                self.game.process_postflop_action(action)
-                game_state = self.game.state
-                await self.send_game_update(game_state)
-            else:
-                await self.send(
-                    text_data=json.dumps({"error": "Invalid postflop action"})
-                )
+    async def get_player_action(self, valid_actions):
+       # Send a message to the client requesting an action
+       await self.send(text_data=json.dumps({
+           "type": "request_action",
+           "valid_actions": valid_actions
+       }))
+       # Wait for the client's response
+       response = await self.receive()
+       return json.loads(response)["action"]
+   
+
 
     async def send_game_update(self, game_state):
-        # await self.send_private_hands(game_state)
-        # await self.send_public_game_state(game_state)
-        await self.send_total_game_state(game_state)
+        logging.info(f"Sending Game Update: {game_state}")
+        #await self.send_total_game_state(game_state)
+        await self.send(text_data=json.dumps({
+            "type": "game_state",
+            "game_state": game_state
+        }))
+        logging.info("Game Update Sent")
+        #add small delay
+        await asyncio.sleep(0.1)
 
     async def send_total_game_state(self, game_state):
         await self.channel_layer.group_send(
             self.room_group_name,
             {"type": "game_state_update", "game_state": game_state},
         )
+        #wait for update
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {"type": "sync_marker", "id": id(game_state)},
+        )
+
+    async def sync_marker(self, event):
+        await self.send(text_data=json.dumps({"type": "sync", "id": event["id"]}))
 
     async def send_private_hands(self, game_state):
         for player in [game_state["oop_player"], game_state["ip_player"]]:
