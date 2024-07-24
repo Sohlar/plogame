@@ -21,5 +21,10 @@ from django.core.asgi import get_asgi_application
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from poker import routing
+from django.views.generic import TemplateView
 
-urlpatterns = [path("admin/", admin.site.urls), path("game/", include("poker.urls"))]
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path(r"^.*", TemplateView.as_view(template_name="index.html"), name="index"),
+    path("api/", include("poker.urls")),
+]
