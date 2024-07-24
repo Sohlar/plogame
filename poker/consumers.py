@@ -33,41 +33,54 @@ class PokerConsumer(AsyncWebsocketConsumer):
         print(f"Player {self.player_id} disconnected from room {self.room_name}")
 
     async def receive(self, text_data):
+        logging.info(f"CONSUMER received data from client: {text_data}")
         data = json.loads(text_data)
-        action = data["action"]
+        message_type = data.get("type")
+        logging.info(f"CONSUMER received message of type: {message_type}")
 
-        if action == "start_hand":
+        if message_type == "start_hand":
             await self.start_new_hand()
-        elif action in ["check", "bet", "fold", "call"]:
-            await self.process_action(action)
+        elif message_type == "player_action":
+            action = data.get("action")
+            logging.info(f"CONSUMER received action request: {action}")
+            if action in ["check", "bet", "fold", "call"]:
+                await self.process_action(action)
+            else:
+                await self.send(text_data=json.dumps({"error": "Invalid action"}))
         else:
-            await self.send(text_data=json.dumps({"error": "Invalid action"}))
+            logging.warning(f"CONSUMER received unknown message type: {message_type}")
+            await self.send(text_data=json.dumps({"error": "Invalid message type"}))
 
     async def start_new_hand(self):
         logging.info("CONSUMER Starting new hand")
         async for state in self.game.play_hand():
-            logging.info(f"CONSUMER Received game state")
-            await self.send_game_update(state)
-            logging.info("CONSUMER Sent Game Update")
+            logging.info("CONSUMER Received game state")
+            if state["valid_actions"] is not None:
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "request_action",
+                            "valid_actions": state["valid_actions"],
+                        }
+                    )
+                )
+                logging.info("CONSUMER Sent Game Update type: request_action")
+            else:
+                await self.send_game_update(state)
+                logging.info("CONSUMER Sent Game Update type: game_state")
             await asyncio.sleep(0.1)
-
-    async def get_player_action(self, valid_actions):
-        # Send a message to the client requesting an action
-        await self.send(
-            text_data=json.dumps(
-                {"type": "request_action", "valid_actions": valid_actions}
-            )
-        )
-        # Wait for the client's response
-        response = await self.receive()
-        return json.loads(response)["action"]
 
     async def send_game_update(self, game_state):
         logging.info(f"CONSUMER Sending Game Update: {game_state}")
         # await self.send_total_game_state(game_state)
-        await self.send(
-            text_data=json.dumps({"type": "game_state", "game_state": game_state})
-        )
+        if game_state["valid_actions"] is not None:
+            await self.send(
+                text_data=json.dumps({"type": "game_state", "game_state": game_state})
+            )
+        else:
+            await self.send(
+                text_data=json.dumps({"type": "game_state", "game_state": game_state})
+            )
         logging.info("CONSUMER Game Update Sent")
         # add small delay
         await asyncio.sleep(0.1)
@@ -82,6 +95,13 @@ class PokerConsumer(AsyncWebsocketConsumer):
             self.room_group_name,
             {"type": "sync_marker", "id": id(game_state)},
         )
+
+    async def process_action(self, action):
+        logging.info(f"CONSUMER processing action {action}")
+        self.game.set_player_action(action)
+
+        # Unsure If I should return a state update here or in game flow preflop_betting()
+        await self.send_game_update(self.game.get_game_state())
 
     async def sync_marker(self, event):
         await self.send(text_data=json.dumps({"type": "sync", "id": event["id"]}))

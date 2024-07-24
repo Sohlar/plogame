@@ -129,8 +129,12 @@
 
         function handleActionRequest(validActions) {
           // Enable only valid action buttons
+          console.log("Valid Actions", validActions);
           document.querySelectorAll('#player-actions button').forEach(button => {
-              button.disabled = !validActions.includes(button.dataset.action);
+              const action = button.textContent.toLowerCase();
+              const isValid = validActions.some(validAction => validAction.toLowerCase());
+              button.disabled = !isValid;
+              console.log(`Button ${action} is ${button.disabled ? 'disabled' : 'enabled'}`);
           });
           addMessage("It's your turn. Please select an action.");
         }
@@ -157,10 +161,6 @@
             document.getElementById('community-cards').style.display = 
                 ['flop', 'turn', 'river'].includes(game_state.street) ? 'block' : 'none';
 
-            // Disable all action buttons by default
-            document.querySelectorAll('#player-actions button').forEach(button => {
-                button.disabled = true;
-            });
             console.log("Finished updating UI")
         }
         function updatePlayerInfo(playerType, playerInfo) {
@@ -198,10 +198,15 @@
         function sendAction(action) {
             if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
                 pokerSocket.send(JSON.stringify({
+                    'type': 'player_action',
                     'action': action,
                     'user_id': userId,
                     'room': roomName
                 }));
+                
+            document.querySelectorAll('#player-actions button').forEach(button => {
+              button.disabled = true;
+            })
             } else {
                 console.error('WebSocket is not connected.');
             }
@@ -219,7 +224,7 @@
             if (pokerSocket && pokerSocket.readyState === WebSocket.OPEN) {
                 console.log('Sending start_hand action');
                 pokerSocket.send(JSON.stringify({
-                    'action': 'start_hand',
+                    'type': 'start_hand',
                     'user_id': userId,
                     'room': roomName
                 }));
@@ -227,6 +232,13 @@
                 console.error('WebSocket is not connected.');
             }
         });
+
+        document.getElementById('player-actions').innerHTML = `
+          <button onclick="sendAction('check')" data-action="check">Check</button>
+          <button onclick="sendAction('call')" data-action="call">Call</button>
+          <button onclick="sendAction('bet')" data-action="bet">Bet</button>
+          <button onclick="sendAction('fold')" data-action="fold">Fold</button>
+        `;
 
         // Connect to WebSocket when the page loads
         connectWebSocket();

@@ -186,8 +186,6 @@ class PokerGame:
     def update_state(self, **kwargs):
         self.state.update(kwargs)
 
-    def get_player_action(self, valid_actions):
-        raise NotImplementedError("get_player_action must be implemented")
 
     async def preflop_betting(self):
         while True:
@@ -200,7 +198,7 @@ class PokerGame:
                 )
                 self.state["hand_over"] = True
                 yield game_state
-                game_state
+                return
 
             all_players_acted = (
                 self.state["num_actions"] >= self.state["num_active_players"]
@@ -208,15 +206,41 @@ class PokerGame:
             all_bets_settled = (
                 self.state["oop_player"]["chips"] == self.state["ip_player"]["chips"]
             )
-            yield self.get_game_state()
             if self.state["hand_over"] or all_players_acted and all_bets_settled:
                 self.state["message"] = "Preflop betting complete"
+                yield game_state
                 return
 
             self.state["valid_actions"] = self.get_valid_preflop_actions()
-            yield self.state["valid_actions"]
-            action = await self.get_player_action(self.state["valid_actions"])
+            logging.info(f"LOGIC Valid Actions: {self.state['valid_actions']}")
+
+            action_gen = self.get_player_action(self.state['valid_actions'])
+            yield await action_gen.__anext__()
+
+            action = await action_gen.__anext__()
             self.process_preflop_action(action)
+            yield self.get_game_state()
+
+    async def get_player_action(self, valid_actions):
+        self.state['awaiting_action'] = True
+        self.state['valid_actions'] = valid_actions
+        game_state = self.get_game_state()
+        yield game_state  # This will be sent to the frontend
+
+        # Wait for the action to be set by the consumer
+        while self.state['awaiting_action']:
+            await asyncio.sleep(0.1)
+
+        action = self.state['last_action']
+        self.state['awaiting_action'] = False
+        self.state['valid_actions'] = []
+        yield action
+        return
+
+    def set_player_action(self, action):
+        if self.state['awaiting_action'] and action in self.state['valid_actions']:
+            self.state['last_action'] = action
+            self.state['awaiting_action'] = False
 
     def process_preflop_action(self, action):
         if self.state["action"] not in self.get_valid_preflop_actions():
