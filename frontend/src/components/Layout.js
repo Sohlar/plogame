@@ -8,7 +8,7 @@ function Layout({ children }) {
       </header>
       <main>{children}</main>
       <footer>
-        <p>&copy; 202 PloGenius</p>
+        <p>&copy; 2024 PloGenius</p>
       </footer>
     </div>
   );

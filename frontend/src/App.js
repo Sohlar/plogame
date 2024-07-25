@@ -8,6 +8,7 @@ import Home from './components/Home.js';
 import About from './components/About.js';
 import Game from './components/Game.js';
 import Grid from './components/Grid.js';
+import Plogrid from './components/plogrid.js';
 
 const theme = createTheme();
 
@@ -19,6 +20,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/plogrid" element={<Plogrid />} />
             <Route path="/grid" element={<Grid />} />
             <Route path="/about" element={<About />} />
             <Route path="/game" element={<Game />} />

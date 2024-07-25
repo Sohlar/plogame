@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Grid, Card, Box, Typography, Popover } from '@mui/material';
+import { Grid, Card, Box, Typography, Tooltip } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 const theme = createTheme({
@@ -40,30 +40,9 @@ const PokerGrid = () => {
     hands.flat().reduce((acc, hand) => ({ ...acc, [hand]: generateRandomStrategy() }), {})
   );
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [popoverContent, setPopoverContent] = useState(null);
-
-  const handleCellHover = (event, hand) => {
-    setAnchorEl(event.currentTarget);
-    setPopoverContent(
-      <Box p={2}>
-        <Typography variant="h6">{hand}</Typography>
-        <Typography>Fold: {strategy[hand].fold}%</Typography>
-        <Typography>Call: {strategy[hand].call}%</Typography>
-        <Typography>Raise: {strategy[hand].raise}%</Typography>
-      </Box>
-    );
-  };
-
-  const handlePopoverClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
-
   const getBackgroundGradient = (handStrategy) => {
-    const { fold, call, raise } = handStrategy;
-    return `linear-gradient(to right, 
+    const { raise, call, fold } = handStrategy;
+    return `linear-gradient(to left, 
       ${theme.palette.fold.main} 0%, 
       ${theme.palette.fold.main} ${fold}%, 
       ${theme.palette.call.main} ${fold}%, 
@@ -72,48 +51,42 @@ const PokerGrid = () => {
       ${theme.palette.raise.main} 100%)`;
   };
 
+  const tooltipContent = (hand) => (
+    <Box p={1}>
+      <Typography variant="subtitle2">{hand}</Typography>
+      <Typography variant="body2">Raise: {strategy[hand].raise}%</Typography>
+      <Typography variant="body2">Call: {strategy[hand].call}%</Typography>
+      <Typography variant="body2">Fold: {strategy[hand].fold}%</Typography>
+    </Box>
+  )
+
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ width: '100%', maxWidth: 800, margin: 'auto', padding: 2 }}>
-        <Typography variant="h4" gutterBottom>Poker Strategy Grid with Multi-Action Percentages</Typography>
+      <Box sx={{ width: '100%', maxWidth: 1000, margin: 'auto', padding: 2 }}>
+        <Typography variant="h4" gutterBottom>Strategy Grid</Typography>
         <Grid container spacing={0.5}>
           {hands.map((row, rowIndex) => (
             row.map((hand, colIndex) => (
               <Grid item xs={12/13} key={`${rowIndex}-${colIndex}`}>
-                <Card 
-                  onMouseEnter={(e) => handleCellHover(e, hand)}
-                  onMouseLeave={handlePopoverClose}
-                  sx={{ 
-                    background: getBackgroundGradient(strategy[hand]),
-                    height: 40,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    '&:hover': { opacity: 0.8 }
-                  }}
-                >
-                  <Typography variant="caption">{hand}</Typography>
-                </Card>
+                <Tooltip title={tooltipContent(hand)} arrow placement="top">
+                  <Card 
+                    sx={{ 
+                      background: getBackgroundGradient(strategy[hand]),
+                      height: 40,
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      '&:hover': { opacity: 0.8 }
+                    }}
+                  >
+                    <Typography variant="caption">{hand}</Typography>
+                  </Card>
+                </Tooltip>
               </Grid>
             ))
           ))}
         </Grid>
-        <Popover
-          open={open}
-          anchorEl={anchorEl}
-          onClose={handlePopoverClose}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'left',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'left',
-          }}
-        >
-          {popoverContent}
-        </Popover>
         <Box sx={{ marginTop: 2 }}>
           <Typography variant="subtitle1">Legend:</Typography>
           <Box display="flex" alignItems="center">
