@@ -1,17 +1,23 @@
 import React from 'react';
 
+import Navbar from './Navbar';
+import { Box, Container, Typography } from '@mui/material';
+
 function Layout({ children }) {
   return (
-    <div className="layout">
-      <header>
-        <h1>PloGenius</h1>
-      </header>
-      <main>{children}</main>
-      <footer>
-        <p>&copy; 2024 PloGenius</p>
-      </footer>
-    </div>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Navbar />
+      <Container component="main" sx={{ flexGrow: 1, py: 3 }}>
+        {children}
+      </Container>
+      <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', backgroundColor: 'background.paper' }}>
+        <Typography variant="body2" color="text.secondary" align="center">
+          © {new Date().getFullYear()} PloGenius
+        </Typography>
+      </Box>
+    </Box>
   );
 }
 
 export default Layout;
+
