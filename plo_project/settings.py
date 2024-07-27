@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "channels",
     "poker",
+    "decision_tree",
 ]
 
 ASGI_APPLICATION = "plo_project.asgi.application"

@@ -13,6 +13,7 @@ function Navbar() {
           <Button color="inherit" component={RouterLink} to="/">Home</Button>
           <Button color="inherit" component={RouterLink} to="/plogrid">PLO Grid</Button>
           <Button color="inherit" component={RouterLink} to="/tree">Tree</Button>
+          <Button color="inherit" component={RouterLink} to="/tree_api">Tree API</Button>
           <Button color="inherit" component={RouterLink} to="/game">Game</Button>
           <Button color="inherit" component={RouterLink} to="/about">About</Button>
         </Box>
