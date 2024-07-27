@@ -9,7 +9,7 @@ import About from './components/About.js';
 import Game from './components/Game.js';
 import Grid from './components/Grid.js';
 import Plogrid from './components/plogrid.js';
-
+import Tree from './components/Tree.js';
 
 const theme = createTheme({
   palette: {
@@ -52,6 +52,7 @@ function App() {
             <Route path="/grid" element={<Grid />} />
             <Route path="/about" element={<About />} />
             <Route path="/game" element={<Game />} />
+            <Route path="/tree" element={<Tree />} />
           </Routes>
         </Layout>
       </Router>
