@@ -1,0 +1,278 @@
+{
+  "single_raised_pot": {
+    "BTNvBB": {
+      "dynamic_unpaired": {
+        "BTN": {
+          "default": {
+            "bet_size": 67,
+            "bet_freq": [
+              { "name": "A98", "BB": 2, "BTN": 58 },
+              { "name": "QJ7", "BB": 5, "BTN": 51 },
+              { "name": "J85", "BB": 13, "BTN": 52 }
+            ],
+            "guideline": {
+              "Range": { "Total": 52, "2 spades": 63, "1 spade": 66, "0 spades": 30 },
+              "Set": { "Total": 81, "2 spades": 93, "1 spade": 79, "0 spades": 78 },
+              "Top two": { "Total": 76, "2 spades": 93, "1 spade": 76, "0 spades": 68 },
+              "Wrap": { "Total": 82, "2 spades": 99, "1 spade": 88, "0 spades": 61 },
+              "Middle two": { "Total": 50, "2 spades": 84, "1 spade": 49, "0 spades": 29 },
+              "Bottom two": { "Total": 25, "2 spades": 55, "1 spade": 41, "0 spades": 14 },
+              "Overpair": { "Total": 42, "2 spades": 67, "1 spade": 51, "0 spades": 10 },
+              "Top pair": { "Total": 57, "2 spades": 64, "1 spade": 73, "0 spades": 28 },
+              "Middle pair": { "Total": 59, "2 spades": 56, "1 spade": 81, "0 spades": 41 },
+              "Bottom pair": { "Total": 54, "2 spades": 54, "1 spade": 82, "0 spades": 36 },
+              "Open-ender": { "Total": 49, "2 spades": 72, "1 spade": 58, "0 spades": 23 },
+              "Gutshot": { "Total": 50, "2 spades": 63, "1 spade": 64, "0 spades": 26 },
+              "Total air": { "Total": 39, "2 spades": 51, "1 spade": 60, "0 spades": 9 }
+            },
+            "additional_guidelines": {
+              "overpair": {
+                "OP": { "Bet67": 42 },
+                "Good OP": { "Bet67": 68 },
+                "Middle OP": { "Bet67": 34 },
+                "Bad OP": { "Bet67": 4 }
+              },
+              "nutflushdraw": {
+                "NFD": { "Bet67": 80 },
+                "Good NFD": { "Bet67": 90 },
+                "Middle NFD": { "Bet67": 68 },
+                "Bad NFD": { "Bet67": 56 }
+              },
+              "toppair": {
+                "Top Pair": { "Bet67": 57 },
+                "Good Top Pair": { "Bet67": 85 },
+                "Middle Top Pair": { "Bet67": 38 },
+                "Bad Top Pair": { "Bet67": 91 }
+              }
+            }
+          },
+          "response": {
+            "lead": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            },
+            "xr": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            }
+          }
+        },
+        "BB": {
+          "default": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          },
+          "response": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          }
+        }
+      },
+      "dry_unpaired": {
+        "BTN": {
+          "default": {
+            "bet_size": 50,
+            "bet_freq": [
+              { "name": "AJ4", "BB": 3, "BTN": 66 },
+              { "name": "Q75", "BB": 18, "BTN": 54 },
+              { "name": "T72", "BB": 14, "BTN": 57 }
+            ],
+            "guideline": {}, // Placeholder
+            "additional_guidelines": {} // Placeholder
+          },
+          "response": {
+            "lead": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            },
+            "xr": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            }
+          }
+        },
+        "BB": {
+          "default": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          },
+          "response": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          }
+        }
+      },
+      "straight": {
+        "BTN": {
+          "default": {
+            "bet_size": 50,
+            "bet_freq": [
+              { "name": "KQJds", "BB": 3, "BTN": 50 },
+              { "name": "987r", "BB": 26, "BTN": 46 },
+              { "name": "653ds", "BB": 19, "BTN": 51 }
+            ],
+            "guideline": {}, // Placeholder
+            "additional_guidelines": {} // Placeholder
+          },
+          "response": {
+            "lead": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            },
+            "xr": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            }
+          }
+        },
+        "BB": {
+          "default": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          },
+          "response": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          }
+        }
+      },
+      "paired": {
+        "BTN": {
+          "default": {
+            "bet_size": 33,
+            "bet_freq": [
+              { "name": "A33", "BB": 4, "BTN": 61 },
+              { "name": "QQ5", "BB": 21, "BTN": 74 },
+              { "name": "877", "BB": 15, "BTN": 54 }
+            ],
+            "guideline": {}, // Placeholder
+            "additional_guidelines": {} // Placeholder
+          },
+          "response": {
+            "lead": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            },
+            "xr": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            }
+          }
+        },
+        "BB": {
+          "default": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          },
+          "response": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          }
+        }
+      },
+      "monotone": {
+        "BTN": {
+          "default": {
+            "bet_size": 33,
+            "bet_freq": [
+              { "name": "A92", "BB": 3, "BTN": 48 },
+              { "name": "KJ8", "BB": 4, "BTN": 52 },
+              { "name": "T54", "BB": 9, "BTN": 59 }
+            ],
+            "guideline": {}, // Placeholder
+            "additional_guidelines": {} // Placeholder
+          },
+          "response": {
+            "lead": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            },
+            "xr": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            }
+          }
+        },
+        "BB": {
+          "default": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          },
+          "response": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          }
+        }
+      }
+    },
+    "COvBTN": {
+      "dynamic_unpaired": {
+        "CO": {
+          "default": {
+            "bet_size": 60,
+            "bet_freq": [
+              { "name": "A98", "CO": 46, "BTN": 41 },
+              { "name": "QJ7", "CO": 14, "BTN": 46 },
+              { "name": "J85", "CO": 16, "BTN": 51 }
+            ],
+            "guideline": {}, // Placeholder
+            "additional_guidelines": {} // Placeholder
+          },
+          "response": {
+            "lead": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            },
+            "xr": {
+              "bet_size": null, // Placeholder
+              "bet_freq": [], // Placeholder
+              "guideline": {} // Placeholder
+            }
+          }
+        },
+        "BTN": {
+          "default": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          },
+          "response": {
+            "bet_size": null, // Placeholder
+            "bet_freq": [], // Placeholder
+            "guideline": {} // Placeholder
+          }
+        }
+      }
+      // Similar structure for other flop textures (dry_unpaired, straight, paired, monotone)
+    }
+  },
+  "three_bet_pot": {
+    "BTNvBB": {
+      // Similar structure as single_raised_pot, with placeholders for different flop textures
+    },
+    "COvBTN": {
+      // Similar structure as single_raised_pot, with placeholders for different flop textures
+    }
+  }
+}
