@@ -54,7 +54,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/game" element={<Game />} />
             <Route path="/tree" element={<Tree />} />
-            <Route path="/tree_api" element={<Tree />} />
+            <Route path="/tree_api" element={<Tree_api />} />
           </Routes>
         </Layout>
       </Router>
