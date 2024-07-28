@@ -113,9 +113,6 @@ const Tree_api = () => {
             </Button>
           ))}
         </Box>
-      </Paper>
-
-      <Paper elevation={3} sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6" gutterBottom>
           Position:
         </Typography>
@@ -131,10 +128,6 @@ const Tree_api = () => {
             </Button>
           ))}
         </Box>
-      </Paper>
-
-      {selectedPosition && (
-        <Paper elevation={3} sx={{ p: 2, mb: 2 }}>
           <Typography variant="h6" gutterBottom>
             Flop Texture:
           </Typography>
@@ -151,8 +144,7 @@ const Tree_api = () => {
               </Button>
             ))}
           </Box>
-        </Paper>
-      )}
+      </Paper>
 
       {isLoading && <Typography>Loading...</Typography>}
       {error && <Typography color="error">{error}</Typography>}
