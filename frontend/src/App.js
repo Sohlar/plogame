@@ -11,6 +11,8 @@ import Grid from './components/Grid.js';
 import Plogrid from './components/plogrid.js';
 import Tree from './components/Tree.js';
 import Tree_api from './components/Tree_api.js';
+import PokerTable from './components/PokerTable.js';
+import PokerTable2 from './components/PokerTable2.js';
 
 const theme = createTheme({
   palette: {
@@ -55,6 +57,8 @@ function App() {
             <Route path="/game" element={<Game />} />
             <Route path="/tree" element={<Tree />} />
             <Route path="/tree_api" element={<Tree_api />} />
+            <Route path="/PokerTable" element={<PokerTable />} />
+            <Route path="/PokerTable2" element={<PokerTable2 />} />
           </Routes>
         </Layout>
       </Router>

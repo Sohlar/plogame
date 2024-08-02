@@ -16,6 +16,8 @@ function Navbar() {
           <Button color="inherit" component={RouterLink} to="/tree_api">Tree API</Button>
           <Button color="inherit" component={RouterLink} to="/game">Game</Button>
           <Button color="inherit" component={RouterLink} to="/about">About</Button>
+          <Button color="inherit" component={RouterLink} to="/PokerTable">PokerTable</Button>
+          <Button color="inherit" component={RouterLink} to="/PokerTable2">PokerTable2</Button>
         </Box>
       </Toolbar>
     </AppBar>
