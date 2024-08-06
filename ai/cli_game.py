@@ -1,4 +1,6 @@
 import secrets
+import numpy as np
+from agent import DQNAgent, train_dqn_poker
 from phevaluator import evaluate_omaha_cards
 
 
@@ -46,6 +48,34 @@ class PokerGame:
         self.ip_player = Player(name="IP", chips=200)
         self.initialize_game_state()
 
+        #Initialize DQN agents
+        state_size = len(self.get_state_representation())
+        action_size = 4 #check, call, bet, fold
+        self.oop_agent = DQNAgent(state_size, action_size)
+        self.ip_agent = DQNAgent(state_size, action_size)
+
+    def get_state_representation(self):
+        # Convert the game state to a numerical representation for the DQN
+        state = [
+            self.pot,
+            len(self.community_cards),
+            self.current_bet,
+            self.oop_player.chips,
+            self.ip_player.chips,
+            self.oop_committed,
+            self.ip_committed,
+        ]
+        # Add encoded representations of community cards and player hands
+        for card in self.community_cards + self.oop_player.hand + self.ip_player.hand:
+            state.extend(self.encode_card(card))
+        return np.array(state)
+
+    def encode_card(self, card):
+        # Simple encoding: rank (2-14) and suit (0-3)
+        ranks = '23456789TJQKA'
+        suits = 'cdhs'
+        return [ranks.index(card[0]) + 2, suits.index(card[1])] 
+
     def initialize_game_state(self):
         self.community_cards = []
         self.pot = 3
@@ -75,25 +105,40 @@ class PokerGame:
         return self.get_game_state()
 
     def play_hand(self):
-        self.start_new_hand()
+        initial_state = self.get_state_representation()
+        game_state = self.start_new_hand()
+
         game_state = self.preflop_betting()
         if game_state["hand_over"]:
+            oop_reward, ip_reward = calculate_rewards(game_state)
             return game_state
 
         print("Entering flop")
         game_state = self.deal_flop()
         if game_state["hand_over"]:
+            oop_reward, ip_reward = calculate_rewards(game_state)
             return game_state
 
         game_state = self.deal_turn()
         if game_state["hand_over"]:
+            oop_reward, ip_reward = calculate_rewards(game_state)
             return game_state
 
         game_state = self.deal_river()
         if game_state["hand_over"]:
+            oop_reward, ip_reward = calculate_rewards(game_state)
             return game_state
 
         return self.determine_showdown_winner()
+
+    def store_experience(self, initial_state, final_state):
+        self.oop_agent.remember(initial_state, )
+
+    def calculate_rewards(self, game_state):
+        oop_reward = game_state['oop_player']['chips'] - 200
+        ip_reward = game_state['ip_player']['chips'] - 200
+
+        return oop_reward, ip_reward
 
     def deal_flop(self):
         self.deal_community_cards(3)
@@ -179,21 +224,33 @@ class PokerGame:
         }
 
     def get_player_action(self, valid_actions):
+        print(f"\nCurrent player: {self.current_player.name}")
+        print(f"Pot: ${self.pot}")
+        print(f"Current bet: ${self.current_bet}")
+        print(f"IP committed: ${self.ip_committed}")
+        print(f"OOP committed: ${self.oop_committed}")
+        print(f"Your chips: ${self.current_player.chips}")
+        print(f"Valid actions: {', '.join(valid_actions)}")
+        
+        state = self.get_state_representation()
+
+
         while True:
-            print(f"\nCurrent player: {self.current_player.name}")
-            print(f"Pot: ${self.pot}")
-            print(f"Current bet: ${self.current_bet}")
-            print(f"IP committed: ${self.ip_committed}")
-            print(f"OOP committed: ${self.oop_committed}")
-            print(f"Your chips: ${self.current_player.chips}")
-            print(f"Valid actions: {', '.join(valid_actions)}")
-
-            action = input(f"{self.current_player.name}, choose an action: ").lower()
-
-            if action in valid_actions:
-                return action
+            if self.current_player == self.oop_player:
+                action = self.oop_agent.act(state)
             else:
-                print("Invalid action. Please try again.")
+                action = self.ip_agent.act(state)
+
+            if action == 0 and 'fold' in valid_actions:
+                return 'fold'
+            elif action == 1 and 'check' in valid_actions:
+                return 'check'
+            elif action == 2 and 'bet' in valid_actions:
+                return 'bet'
+            elif action == 3 and 'call' in valid_actions:
+                return 'call'
+            else:
+                return np.random.choice(valid_actions)    
 
     def preflop_betting(self):
         self.num_active_players = len(
