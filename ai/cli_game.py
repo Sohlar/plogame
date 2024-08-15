@@ -1,8 +1,21 @@
 import secrets
+import logging
+import sys
 import numpy as np
-from agent import DQNAgent, train_dqn_poker
+from agent import DQNAgent
 from phevaluator import evaluate_omaha_cards
 
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.FileHandler("poker_game.log", mode='w'),
+                        logging.StreamHandler(sys.stdout)
+                    ])
+
+logging.getLogger().handlers[0].flush = lambda: None
+logging.getLogger().handlers[1].flush = lambda: None
+logging.getLogger().setLevel(logging.INFO)
 
 #### Player Class ####
 class Player:
@@ -49,32 +62,40 @@ class PokerGame:
         self.initialize_game_state()
 
         #Initialize DQN agents
-        state_size = len(self.get_state_representation())
-        action_size = 4 #check, call, bet, fold
-        self.oop_agent = DQNAgent(state_size, action_size)
-        self.ip_agent = DQNAgent(state_size, action_size)
+        self.state_size = 33
+        self.action_size = 4 #check, call, bet, fold
+
+        self.oop_agent = DQNAgent(self.state_size, self.action_size)
+        self.ip_agent = DQNAgent(self.state_size, self.action_size)
+
+
+        logging.info("PokerGame initialized")
 
     def get_state_representation(self):
         # Convert the game state to a numerical representation for the DQN
         state = [
-            self.pot,
-            len(self.community_cards),
-            self.current_bet,
-            self.oop_player.chips,
-            self.ip_player.chips,
-            self.oop_committed,
-            self.ip_committed,
+            float(self.pot),
+            float(len(self.community_cards)),
+            float(self.current_bet),
+            float(self.oop_player.chips),
+            float(self.ip_player.chips),
+            float(self.oop_committed),
+            float(self.ip_committed),
         ]
         # Add encoded representations of community cards and player hands
         for card in self.community_cards + self.oop_player.hand + self.ip_player.hand:
-            state.extend(self.encode_card(card))
-        return np.array(state)
+            if card:
+                state.extend(self.encode_card(card))
+
+        state.extend([0, 0] * (self.state_size - len(state)))
+
+        return np.array(state, dtype=np.float32)
 
     def encode_card(self, card):
         # Simple encoding: rank (2-14) and suit (0-3)
         ranks = '23456789TJQKA'
         suits = 'cdhs'
-        return [ranks.index(card[0]) + 2, suits.index(card[1])] 
+        return (ranks.index(card[0]) + 2, suits.index(card[1])) 
 
     def initialize_game_state(self):
         self.community_cards = []
@@ -105,34 +126,44 @@ class PokerGame:
         return self.get_game_state()
 
     def play_hand(self):
-        initial_state = self.get_state_representation()
+        logging.info("Starting new hand")
         game_state = self.start_new_hand()
 
-        game_state = self.preflop_betting()
-        if game_state["hand_over"]:
-            oop_reward, ip_reward = calculate_rewards(game_state)
-            return game_state
+        oop_experiences = []
+        ip_experiences = []
 
-        print("Entering flop")
-        game_state = self.deal_flop()
-        if game_state["hand_over"]:
-            oop_reward, ip_reward = calculate_rewards(game_state)
-            return game_state
+        game_state, round_experiences = self.preflop_betting()
+        oop_experiences.extend(round_experiences[0])
+        ip_experiences.extend(round_experiences[1])
 
-        game_state = self.deal_turn()
-        if game_state["hand_over"]:
-            oop_reward, ip_reward = calculate_rewards(game_state)
-            return game_state
+        if not game_state["hand_over"]:
+            game_state, round_experiences = self.deal_flop()
+            oop_experiences.extend(round_experiences[0])
+            ip_experiences.extend(round_experiences[1])
 
-        game_state = self.deal_river()
-        if game_state["hand_over"]:
-            oop_reward, ip_reward = calculate_rewards(game_state)
-            return game_state
+            if not game_state["hand_over"]:
+                game_state, round_experiences = self.deal_turn()
+                oop_experiences.extend(round_experiences[0])
+                ip_experiences.extend(round_experiences[1])
 
-        return self.determine_showdown_winner()
+                if not game_state["hand_over"]:
+                    game_state, round_experiences = self.deal_river()
+                    oop_experiences.extend(round_experiences[0])
+                    ip_experiences.extend(round_experiences[1])
 
-    def store_experience(self, initial_state, final_state):
-        self.oop_agent.remember(initial_state, )
+                    if not game_state["hand_over"]:
+                        game_state = self.determine_showdown_winner()
+
+        final_state = self.get_state_representation()
+        oop_reward, ip_reward = self.calculate_rewards(game_state)
+
+        for state, action, _ in oop_experiences:
+            self.oop_agent.remember(state, action, oop_reward, final_state, True)
+        for state, action, _ in ip_experiences:
+            self.ip_agent.remember(state, action, ip_reward, final_state, True)
+
+        return game_state
+
 
     def calculate_rewards(self, game_state):
         oop_reward = game_state['oop_player']['chips'] - 200
@@ -141,28 +172,31 @@ class PokerGame:
         return oop_reward, ip_reward
 
     def deal_flop(self):
+        logging.info("Dealing flop")
         self.deal_community_cards(3)
         return self.postflop_betting(street="flop")
 
     def deal_turn(self):
+        logging.info("Dealing Turn")
         self.deal_community_cards(1)
         return self.postflop_betting(street="turn")
 
     def deal_river(self):
+        logging.info("Dealing River")
         self.deal_community_cards(1)
         return self.postflop_betting(street="river")
 
     def deal_community_cards(self, num_cards):
         self.community_cards.extend([self.deck.cards.pop() for _ in range(num_cards)])
-        print(self.community_cards)
 
     def reset_hands(self):
+        logging.info("Resetting Hands")
         self.deck = Deck()
         self.community_cards = []
         self.pot = 0
         self.oop_player.hand = []
         self.ip_player.hand = []
-        self.current_bet = []
+        self.current_bet = 0
         self.num_actions = 0
         self.last_action = None
         self.hand_over = False
@@ -224,66 +258,72 @@ class PokerGame:
         }
 
     def get_player_action(self, valid_actions):
-        print(f"\nCurrent player: {self.current_player.name}")
-        print(f"Pot: ${self.pot}")
-        print(f"Current bet: ${self.current_bet}")
-        print(f"IP committed: ${self.ip_committed}")
-        print(f"OOP committed: ${self.oop_committed}")
-        print(f"Your chips: ${self.current_player.chips}")
-        print(f"Valid actions: {', '.join(valid_actions)}")
-        
+        logging.info(f"Getting {self.current_player.name}'s Action: ({valid_actions})")
         state = self.get_state_representation()
+        if self.current_player == self.oop_player:
+            action = self.oop_agent.act(state)
+        else:
+            action = self.ip_agent.act(state)
 
+        action_map = {0: 'fold', 1: 'check', 2: 'call', 3: 'raise'}
+        chosen_action = action_map[action]
 
-        while True:
-            if self.current_player == self.oop_player:
-                action = self.oop_agent.act(state)
-            else:
-                action = self.ip_agent.act(state)
-
-            if action == 0 and 'fold' in valid_actions:
-                return 'fold'
-            elif action == 1 and 'check' in valid_actions:
-                return 'check'
-            elif action == 2 and 'bet' in valid_actions:
-                return 'bet'
-            elif action == 3 and 'call' in valid_actions:
-                return 'call'
-            else:
-                return np.random.choice(valid_actions)    
+        if chosen_action in valid_actions:
+            return chosen_action
+        else:
+            return np.random.choice(valid_actions)
 
     def preflop_betting(self):
-        self.num_active_players = len(
-            [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
-        )
-        self.ip_committed, self.oop_committed = 1, 2
-        self.current_bet, self.num_actions = 2, 0
-        self.last_action = "bet"
-        self.current_player = self.ip_player
-        self.hand_over = False
+        # self.num_active_players = len(
+            # [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
+        # )
+        # self.ip_committed, self.oop_committed = 1, 2
+        # self.current_bet, self.num_actions = 2, 0
+        # self.last_action = "bet"
+        # self.current_player = self.ip_player
+        # self.hand_over = False
+
+        logging.info("Starting Preflop Betting")
+        oop_experiences = []
+        ip_experiences = []
 
         while True:
             game_state = self.get_game_state()
 
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
+                game_state = self.get_game_state()
                 game_state["message"] = f"{self.current_player.name} wins ${self.pot}"
                 game_state["hand_over"] = True
-                return game_state
+                return game_state, (oop_experiences, ip_experiences)
 
             all_players_acted = self.num_actions >= self.num_active_players
             all_bets_settled = self.oop_player.chips == self.ip_player.chips
             if all_players_acted and all_bets_settled:
+                game_state = self.get_game_state()
                 game_state["message"] = "Preflop betting complete"
-                return game_state
+                return game_state, (oop_experiences, ip_experiences)
 
             # Instead of prompting for input, we'll return the game state
             valid_actions = self.get_valid_preflop_actions()
             action = self.get_player_action(valid_actions)
+            action_int = self.action_to_int(action)
+
+            if self.current_player == self.oop_player:
+                oop_experiences.append((game_state, action_int, valid_actions))
+            else:
+                ip_experiences.append((game_state, action_int, valid_actions))
+
+
             self.process_preflop_action(action)
-        return game_state
+        return game_state, (oop_experiences, ip_experiences)
+
+    def action_to_int(self, action):
+        action_map = {'fold': 0, 'check': 1, 'call': 2, 'bet': 3}
+        return action_map[action]
 
     def process_preflop_action(self, action):
+        logging.info(f"Processing preflop action: {action}")
         # This method will be called from the server to process each action
         if action not in self.get_valid_preflop_actions():
             return {"error: Invalid Action"}
@@ -312,6 +352,7 @@ class PokerGame:
         # fmt: on
 
     def handle_preflop_bet(self):
+        logging.info("Handling preflop bet for {self.current_player.name}")
         is_allin, bet_amount = self.calculate_preflop_bet_size()
         if not is_allin:
             if self.current_player.name == self.ip_player.name:
@@ -335,8 +376,10 @@ class PokerGame:
         self.last_action = "bet"
 
     def handle_preflop_call(self):
+        logging.info(f"Handling preflop call for {self.current_player.name}")
         if self.current_player == self.ip_player and self.num_actions == 0:
             self.current_player.chips -= 1
+            self.ip_committed += 1
             self.pot += 1
         else:
             if self.current_player.name == self.oop_player.name:
@@ -351,6 +394,7 @@ class PokerGame:
         self.last_action = "call"
 
     def handle_preflop_check(self):
+        logging.info(f"Handling preflop check from {self.current_player.name}")
         if self.current_player == self.oop_player and self.last_action == "call":
             self.num_actions += 1
             self.last_action = "check"
@@ -368,39 +412,52 @@ class PokerGame:
         return all_in, bet_size
 
     def postflop_betting(self, street):
-        self.num_active_players = len(
-            [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
-        )
-        self.ip_committed = 0
-        self.oop_committed = 0
+        logging.info("Starting Postflop Betting")
+        # self.num_active_players = len(
+            # [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
+        # )
+        # self.ip_committed = 0
+        # self.oop_committed = 0
         self.current_bet = 0
         self.num_actions = 0
-        self.current_player = self.oop_player
-        self.hand_over = False
+        # self.current_player = self.oop_player
+        # self.hand_over = False
 
+        oop_experiences = []
+        ip_experiences = []
         while True:
-            game_state = self.get_game_state()
-            game_state["street"] = street
+            state = self.get_game_state()
+
+            logging.info(f"Current State: {state}")
 
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
-                return {
-                    "message": f"{self.current_player.name} wins ${self.pot}",
-                    "hand_over": True,
-                }
+                game_state = self.get_game_state()
+                game_state['message'] = f"{self.current_player.name} wins ${self.pot}"
+                game_state['hand_over'] = True
+                return game_state, (oop_experiences, ip_experiences)
 
             all_players_acted = self.num_actions >= self.num_active_players
             all_bets_settled = self.oop_player.chips == self.ip_player.chips
             if all_players_acted and all_bets_settled:
+                game_state = self.get_game_state()
                 game_state["message"] = f"{street.capitalize()} betting complete"
-                return game_state
+                return game_state, (oop_experiences, ip_experiences)
 
             valid_actions = self.get_valid_postflop_actions()
             action = self.get_player_action(valid_actions)
+            action_int = self.action_to_int(action)
+
+            if self.current_player == self.oop_player:
+                oop_experiences.append((state, action_int, valid_actions))
+            else:
+                ip_experiences.append((state, action_int, valid_actions))
+
             self.process_postflop_action(action)
-        return game_state
+        return game_state, (oop_experiences, ip_experiences)
 
     def process_postflop_action(self, action):
+        logging.info(f"Processing Postflop Action: {action}")
         if action not in self.get_valid_postflop_actions():
             return {"error": "Invalid Action"}
 
@@ -424,8 +481,8 @@ class PokerGame:
             return ["call", "bet", "fold"]
 
     def handle_postflop_bet(self):
+        logging.info(f"Handling postflop bet for {self.current_player.name}")
         is_allin, bet_amount = self.calculate_postflop_bet_size()
-        print(bet_amount)
         if not is_allin:
             if self.current_player.name == self.ip_player.name:
                 self.current_player.chips -= bet_amount
@@ -449,15 +506,12 @@ class PokerGame:
         self.last_action = "bet"
 
     def handle_postflop_call(self):
+        logging.info("Handling postflop CALL for {self.current_player.name}")
         call_amount = self.current_bet
         if call_amount <= self.current_player.chips:
-            print("1")
-            print(self.current_player.chips)
-            print(call_amount)
             self.current_player.chips -= call_amount
             self.pot += call_amount
         else:
-            print("2")
             # This is prone to bug. Only works under equal starting stacks.
             all_in_amount = self.current_player.chips
             self.current_player.chips = 0
@@ -476,10 +530,12 @@ class PokerGame:
         self.last_action = "call"
 
     def handle_postflop_check(self):
+        logging.info(f"Handling postflop CHECK for {self.current_player.name}")
         self.num_actions += 1
         self.last_action = "check"
 
     def handle_fold(self):
+        logging.info(f"Handling postflop FOLD for {self.current_player.name}")
         self.num_active_players -= 1
         self.hand_over = True
 
@@ -504,6 +560,7 @@ class PokerGame:
         )
 
     def determine_showdown_winner(self):
+        logging.info("Determining Showdown Winner")
         # fmt: off
         ip_rank = evaluate_omaha_cards(
             self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
@@ -537,41 +594,3 @@ class PokerGame:
 
         return result
 
-
-def main():
-    game = PokerGame()
-
-    print("Welcome to the Poker Game!")
-    print("Players: OOP (Out of Position) and IP (In Position)")
-    print("Starting chips: 200 each")
-    print("Blinds: 1/2\n")
-
-    while True:
-        print("\n--- New Hand ---")
-        result = game.play_hand()
-
-        if "message" in result:
-            print(result["message"])
-        else:
-            print("Showdown!")
-            print(f"Community cards: {', '.join(result['community_cards'])}")
-            print(f"OOP hand: {', '.join(result['oop_hand'])}")
-            print(f"IP hand: {', '.join(result['ip_hand'])}")
-            print(f"Winner: {result['winner']}")
-            if result["winner"] != "chop":
-                print(f"Winning hand: {', '.join(result['winning hand'])}")
-            print(f"Pot: ${result['pot']}")
-
-        print("\nCurrent chip counts:")
-        print(f"OOP: ${game.oop_player.chips}")
-        print(f"IP: ${game.ip_player.chips}")
-
-        play_again = input("\nPlay another hand? (y/n): ").lower()
-        if play_again != "y":
-            break
-
-    print("\nThanks for playing!")
-
-
-if __name__ == "__main__":
-    main()

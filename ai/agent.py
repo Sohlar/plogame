@@ -100,6 +100,10 @@ class DQNAgent:
         Args:
             batch_size (int): The number of samples to use for training.
         """
+
+        if len(self.memory) < batch_size:
+            return
+
         minibatch = random.sample(self.memory, batch_size)  # Random sampling breaks correlation between consecutive hands
         states, actions, rewards, next_states, dones = zip(*minibatch)
 
@@ -125,55 +129,11 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+        return loss.item()
+
     def update_target_model(self):
         """
         Update the target model with the weights of the main model.
         """
         # Periodically update target network to stabilize training
         self.target_model.load_state_dict(self.model.state_dict())
-
-def train_dqn_poker(env, episodes, batch_size=32):
-    """
-    Train the DQN agent to play poker.
-
-    Args:
-        env: The poker environment.
-        episodes (int): The number of episodes to train for.
-        batch_size (int): The batch size for training. Defaults to 32.
-
-    Returns:
-        DQNAgent: The trained agent.
-    """
-    state_size = env.get_state().shape[0]  # Get the size of the poker game state
-    action_size = 3  # Typically fold, call, raise in poker
-    agent = DQNAgent(state_size, action_size)
-    
-    for e in range(episodes):
-        state = env.reset()  # Start a new poker hand
-        total_reward = 0
-        done = False
-        
-        while not done:
-            action = agent.act(state)  # Choose action (fold, call, or raise)
-            next_state, reward, done, _ = env.step(action)  # Play the chosen action
-            agent.remember(state, action, reward, next_state, done)  # Store the experience
-            state = next_state
-            total_reward += reward
-
-            if len(agent.memory) > batch_size:
-                agent.replay(batch_size)  # Train on past experiences
-
-        if e % 10 == 0:
-            agent.update_target_model()  # Periodically update target network for stable learning
-
-        if e % 100 == 0:
-            print(f"Episode: {e}/{episodes}, Total Reward: {total_reward}, Epsilon: {agent.epsilon:.2f}")
-
-    return agent
-
-# Assuming we have our PokerEnvironment class from the previous example
-env = PokerEnvironment()
-trained_agent = train_dqn_poker(env, episodes=100000)  # Train over many poker hands
-
-# Save the trained model for later use
-torch.save(trained_agent.model.state_dict(), "poker_dqn_model.pth")
