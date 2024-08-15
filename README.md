@@ -100,6 +100,9 @@ The frontend is built with React and includes the following key components:
 - React Router for navigation
 - A poker strategy grid component
 
+## Sim logs
+`tail -f poker_game.log`
+
 ## TODO
 
 - **Finish Communication Protocol**: Finalize the communication protocol for real-time game updates and player interactions.
