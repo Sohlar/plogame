@@ -289,7 +289,7 @@ class PokerGame:
 
         while True:
             game_state = self.get_game_state()
-
+            state_representation = self.get_state_representation()
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
                 game_state = self.get_game_state()
@@ -310,9 +310,9 @@ class PokerGame:
             action_int = self.action_to_int(action)
 
             if self.current_player == self.oop_player:
-                oop_experiences.append((game_state, action_int, valid_actions))
+                oop_experiences.append((state_representation, action_int, valid_actions))
             else:
-                ip_experiences.append((game_state, action_int, valid_actions))
+                ip_experiences.append((state_representation, action_int, valid_actions))
 
 
             self.process_preflop_action(action)
@@ -352,7 +352,7 @@ class PokerGame:
         # fmt: on
 
     def handle_preflop_bet(self):
-        logging.info("Handling preflop bet for {self.current_player.name}")
+        logging.info(f"Handling preflop bet for {self.current_player.name}")
         is_allin, bet_amount = self.calculate_preflop_bet_size()
         if not is_allin:
             if self.current_player.name == self.ip_player.name:
