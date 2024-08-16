@@ -62,7 +62,7 @@ class PokerGame:
         self.initialize_game_state()
 
         #Initialize DQN agents
-        self.state_size = 33
+        self.state_size = 7 + (5*2) + 2*4*2
         self.action_size = 4 #check, call, bet, fold
 
         self.oop_agent = DQNAgent(self.state_size, self.action_size)
@@ -71,27 +71,38 @@ class PokerGame:
 
         logging.info("PokerGame initialized")
 
-    def get_state_representation(self):
+    def get_state_representation(self, state=None):
         # Convert the game state to a numerical representation for the DQN
-        state = [
-            float(self.pot),
-            float(len(self.community_cards)),
-            float(self.current_bet),
-            float(self.oop_player.chips),
-            float(self.ip_player.chips),
-            float(self.oop_committed),
-            float(self.ip_committed),
+        if state is None:
+            state = self.get_game_state()
+        representation = [
+            float(state['pot']),
+            float(len(state['community_cards'])),
+            float(state['current_bet']),
+            float(state['oop_player']['chips']),
+            float(state['ip_player']['chips']),
+            float(state['oop_player']['committed']),
+            float(state['ip_player']['committed']),
         ]
         # Add encoded representations of community cards and player hands
-        for card in self.community_cards + self.oop_player.hand + self.ip_player.hand:
-            if card:
-                state.extend(self.encode_card(card))
+        community_cards = state['community_cards'] + [''] * (5- len(state['community_cards']))
+        for card in community_cards:
+            representation.extend(self.encode_card(card))
 
-        state.extend([0, 0] * (self.state_size - len(state)))
+        for card in state['oop_player']['hand']:
+            representation.extend(self.encode_card(card))
 
-        return np.array(state, dtype=np.float32)
+        for card in state['ip_player']['hand']:
+            representation.extend(self.encode_card(card))
+
+        assert len(representation) == self.state_size, f"State size { self.state_size }"
+        # representation.extend([0, 0] * (self.state_size - len(representation)))
+
+        return np.array(representation, dtype=np.float32)
 
     def encode_card(self, card):
+        if not card:
+            return [0, 0]
         # Simple encoding: rank (2-14) and suit (0-3)
         ranks = '23456789TJQKA'
         suits = 'cdhs'
@@ -164,6 +175,32 @@ class PokerGame:
 
         return game_state
 
+    def determine_showdown_winner(self):
+        logging.info("Determining Showdown Winner")
+        updated_state = self.get_game_state()
+        # fmt: off
+        ip_rank = evaluate_omaha_cards(
+            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
+            self.ip_player.hand[0], self.ip_player.hand[1], self.ip_player.hand[2], self.ip_player.hand[3],
+        )
+        oop_rank = evaluate_omaha_cards(
+            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
+            self.oop_player.hand[0], self.oop_player.hand[1], self.oop_player.hand[2], self.oop_player.hand[3],
+        )
+        # fmt: on
+
+        if ip_rank < oop_rank:
+            updated_state['ip_player']['chips'] += self.pot
+        elif oop_rank < ip_rank:
+            updated_state['oop_player']['chips'] += self.pot
+        else:
+            updated_state['ip_player']['chips'] += self.pot / 2
+            updated_state['oop_player']['chips'] += self.pot / 2
+
+        updated_state["hand_over"] = True
+
+        return updated_state
+
 
     def calculate_rewards(self, game_state):
         oop_reward = game_state['oop_player']['chips'] - 200
@@ -196,7 +233,7 @@ class PokerGame:
         self.pot = 0
         self.oop_player.hand = []
         self.ip_player.hand = []
-        self.current_bet = 0
+        self.current_bet = 2
         self.num_actions = 0
         self.last_action = None
         self.hand_over = False
@@ -290,6 +327,11 @@ class PokerGame:
         while True:
             game_state = self.get_game_state()
             state_representation = self.get_state_representation()
+
+            logging.info(f"Current State: {game_state}")
+            logging.info(f"IP hand: {game_state['ip_player']['hand']}")
+            logging.info(f"OOP hand: {game_state['oop_player']['hand']}")
+
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
                 game_state = self.get_game_state()
@@ -354,6 +396,7 @@ class PokerGame:
     def handle_preflop_bet(self):
         logging.info(f"Handling preflop bet for {self.current_player.name}")
         is_allin, bet_amount = self.calculate_preflop_bet_size()
+        # logging.info(f"\n\nis_allin: {is_allin}  bet_amount: {bet_amount}\n\n")
         if not is_allin:
             if self.current_player.name == self.ip_player.name:
                 self.current_player.chips -= bet_amount - self.ip_committed
@@ -400,11 +443,12 @@ class PokerGame:
             self.last_action = "check"
 
     def calculate_preflop_bet_size(self):
+        state = self.get_game_state()
         all_in = False
         is_raise = True
         if is_raise:
             # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-            bet_size = 3 * self.current_bet
+            bet_size = 3 * state['current_bet']
         if self.current_player.chips < bet_size:
             bet_size = self.current_player.chips
             all_in = True
@@ -420,13 +464,14 @@ class PokerGame:
         # self.oop_committed = 0
         self.current_bet = 0
         self.num_actions = 0
-        # self.current_player = self.oop_player
+        self.current_player = self.oop_player
         # self.hand_over = False
 
         oop_experiences = []
         ip_experiences = []
         while True:
             state = self.get_game_state()
+            state_representation = self.get_state_representation()
 
             logging.info(f"Current State: {state}")
 
@@ -449,9 +494,9 @@ class PokerGame:
             action_int = self.action_to_int(action)
 
             if self.current_player == self.oop_player:
-                oop_experiences.append((state, action_int, valid_actions))
+                oop_experiences.append((state_representation, action_int, valid_actions))
             else:
-                ip_experiences.append((state, action_int, valid_actions))
+                ip_experiences.append((state_representation, action_int, valid_actions))
 
             self.process_postflop_action(action)
         return game_state, (oop_experiences, ip_experiences)
@@ -558,39 +603,3 @@ class PokerGame:
         self.current_player = (
             self.oop_player if self.current_player == self.ip_player else self.ip_player
         )
-
-    def determine_showdown_winner(self):
-        logging.info("Determining Showdown Winner")
-        # fmt: off
-        ip_rank = evaluate_omaha_cards(
-            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
-            self.ip_player.hand[0], self.ip_player.hand[1], self.ip_player.hand[2], self.ip_player.hand[3],
-        )
-        oop_rank = evaluate_omaha_cards(
-            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
-            self.oop_player.hand[0], self.oop_player.hand[1], self.oop_player.hand[2], self.oop_player.hand[3],
-        )
-        # fmt: on
-        result = {
-            "ip_hand": self.ip_player.hand,
-            "oop_hand": self.oop_player.hand,
-            "community_cards": self.community_cards,
-            "pot": self.pot,
-        }
-
-        if ip_rank < oop_rank:
-            result["winner"] = "IP Player"
-            result["winning hand"] = self.ip_player.hand
-            self.ip_player.chips += self.pot
-        elif oop_rank < ip_rank:
-            result["winner"] = "OOP Player"
-            result["winning hand"] = self.oop_player.hand
-            self.oop_player.chips += self.pot
-        else:
-            result["winner"] = "chop"
-            result["winning hand"] = None
-            self.ip_player.chips += self.pot / 2
-            self.oop_player.chips += self.pot / 2
-
-        return result
-

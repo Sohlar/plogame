@@ -1,6 +1,7 @@
 import torch
 from cli_game import PokerGame
 from agent import DQNAgent
+import time
 
 def train_dqn_poker(game, episodes, batch_size=32):
     print("Starting DQN training for PLO...")
@@ -33,11 +34,14 @@ def train_dqn_poker(game, episodes, batch_size=32):
     torch.save(game.ip_agent.model.state_dict(), "ip_dqn_model.pth")
 
 def main():
+    start_time = time.time()
     game = PokerGame()
-    num_episodes = 10000
+    num_episodes = 100000
     batch_size = 32
 
     train_dqn_poker(game, num_episodes, batch_size)
+    end_time = time.time()
+    print(end_time - start_time)
 
 
 if __name__ == "__main__":
