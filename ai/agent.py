@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.cuda
 import random
 from collections import deque
 
@@ -48,6 +49,11 @@ class DQNAgent:
             state_size (int): The size of the state space.
             action_size (int): The number of possible actions.
         """
+        if torch.cuda.is_available():
+            print("Cuda is Available. GPU will be used")
+            print(f"GPU name: {torch.cuda.get_device_name(0)}")
+            print(f"Number of GPUs: {torch.cuda.get_device_name(0)}")
+            device = torch.device("cuda")
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
         self.action_size = action_size  # Number of possible actions (fold, call, raise)
         self.memory = deque(maxlen=10000)  # Experience replay buffer, crucial for stable learning in poker
@@ -73,6 +79,11 @@ class DQNAgent:
             done: Whether the episode has ended.
         """
         # Store experiences to learn from diverse poker situations
+        if not isinstance(state, torch.Tensor):
+            state = torch.FloatTensor(state).to(self.device)
+        if not isinstance(next_state, torch.Tensor):
+            next_state = torch.FloatTensor(next_state).to(self.device)
+
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
@@ -88,8 +99,16 @@ class DQNAgent:
         if np.random.rand() <= self.epsilon:
             # Exploration: randomly try actions to discover new poker strategies
             return random.randrange(self.action_size)
-        state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-        act_values = self.model(state)
+
+        if not isinstance(state, torch.Tensor):
+            state = torch.FloatTensor(state)
+        state = state.to(self.device)
+        
+        if state.dim() == 1:
+            state = state.unsqueeze(0)
+
+        with torch.no_grad():
+            act_values = self.model(state)
         # Exploitation: choose best action based on learned Q-values
         return np.argmax(act_values.cpu().data.numpy())
 
@@ -108,10 +127,10 @@ class DQNAgent:
         states, actions, rewards, next_states, dones = zip(*minibatch)
 
         # Convert to tensors for batch processing
-        states = torch.FloatTensor(states).to(self.device)
+        states = torch.stack(states).to(self.device)
         actions = torch.LongTensor(actions).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
-        next_states = torch.FloatTensor(next_states).to(self.device)
+        next_states = torch.stack(next_states).to(self.device)
         dones = torch.FloatTensor(dones).to(self.device)
 
         # Compute current Q-values and target Q-values

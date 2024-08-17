@@ -4,19 +4,10 @@ import sys
 import numpy as np
 from agent import DQNAgent
 from phevaluator import evaluate_omaha_cards
+from logging_config import setup_logging
+import torch
 
-
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[
-                        logging.FileHandler("poker_game.log", mode='w'),
-                        logging.StreamHandler(sys.stdout)
-                    ])
-
-logging.getLogger().handlers[0].flush = lambda: None
-logging.getLogger().handlers[1].flush = lambda: None
-logging.getLogger().setLevel(logging.INFO)
-
+setup_logging()
 #### Player Class ####
 class Player:
     players = []
@@ -65,6 +56,7 @@ class PokerGame:
         self.state_size = 7 + (5*2) + 2*4*2
         self.action_size = 4 #check, call, bet, fold
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.oop_agent = DQNAgent(self.state_size, self.action_size)
         self.ip_agent = DQNAgent(self.state_size, self.action_size)
 
@@ -98,7 +90,7 @@ class PokerGame:
         assert len(representation) == self.state_size, f"State size { self.state_size }"
         # representation.extend([0, 0] * (self.state_size - len(representation)))
 
-        return np.array(representation, dtype=np.float32)
+        return torch.FloatTensor(representation)
 
     def encode_card(self, card):
         if not card:
