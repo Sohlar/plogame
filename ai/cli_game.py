@@ -34,6 +34,13 @@ class Player:
         for player in Player.get_players():
             player.chips = CONST_100bb
 
+class HumanPlayer(Player):
+    def get_action(self, valid_actions):
+        while True:
+            action = input(f"Choose an action {valid_actions}: ")
+            if action in valid_actions:
+                return action
+            print("Invalid action. Please try again.")
 
 class Deck:
     def __init__(self):
@@ -51,10 +58,24 @@ class Deck:
 
 
 class PokerGame:
-    def __init__(self):
+    def __init__(self, human_position=None, ai_agent=None):
         self.deck = Deck()
+<<<<<<< HEAD
         self.oop_player = Player(name="OOP", chips=CONST_100bb)
         self.ip_player = Player(name="IP", chips=CONST_100bb)
+=======
+
+        if human_position == 'oop':
+            self.oop_player = HumanPlayer(name="OOP", chips=200)
+            self.ip_player = Player(name="IP", chips=200)
+        if human_position == 'ip':
+            self.oop_player = Player(name="OOP", chips=200)
+            self.ip_player = HumanPlayer(name="IP", chips=200)
+        else:
+            self.oop_player = Player(name="OOP", chips=200)
+            self.ip_player = Player(name="IP", chips=200)
+
+>>>>>>> 516db94 (Add Ability to load in and play versus models.)
         self.initialize_game_state()
 
         #Initialize DQN agents
@@ -62,9 +83,13 @@ class PokerGame:
         self.action_size = 4 #check, call, bet, fold
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.oop_agent = DQNAgent(self.state_size, self.action_size)
-        self.ip_agent = DQNAgent(self.state_size, self.action_size)
 
+        if ai_agent:
+            self.oop_agent = ai_agent if isinstance(self.oop_player, Player) else None 
+            self.ip_agent = ai_agent if isinstance(self.ip_player, Player) else None 
+        else:
+            self.oop_agent = DQNAgent(self.state_size, self.action_size)
+            self.ip_agent = DQNAgent(self.state_size, self.action_size)
 
         logging.info("PokerGame initialized")
 
@@ -137,6 +162,8 @@ class PokerGame:
         logging.info("Starting new hand")
         game_state = self.start_new_hand()
 
+        print(f"Your hand: {self.get_player_hand()}")
+
         oop_experiences = []
         ip_experiences = []
 
@@ -171,6 +198,14 @@ class PokerGame:
             self.ip_agent.remember(state, action, ip_reward, final_state, True)
 
         return game_state
+
+    def get_player_hand(self):
+        if isinstance(self.oop_player, HumanPlayer):
+            return self.oop_player.hand
+        elif isinstance(self.ip_player, HumanPlayer):
+            return self.ip_player.hand
+        else:
+            return None
 
     def determine_showdown_winner(self):
         logging.info("Determining Showdown Winner")
@@ -293,6 +328,9 @@ class PokerGame:
 
     def get_player_action(self, valid_actions):
         logging.info(f"Getting {self.current_player.name}'s Action: ({valid_actions})")
+        if isinstance(self.current_player, HumanPlayer):
+            return self.current_player.get_action(valid_actions)
+        
         state = self.get_state_representation()
         if self.current_player == self.oop_player:
             action = self.oop_agent.act(state)
@@ -326,8 +364,11 @@ class PokerGame:
             state_representation = self.get_state_representation()
 
             logging.info(f"Current State: {game_state}")
-            logging.info(f"IP hand: {game_state['ip_player']['hand']}")
-            logging.info(f"OOP hand: {game_state['oop_player']['hand']}")
+            print(f"\nCommunity Cards: {game_state['community_cards']}")
+            print(f"Pot: {game_state['pot']}")
+            print(f"Your Hand: {self.get_player_hand()}")
+            print(f"Your Chips: {game_state[self.current_player.name.lower() + '_player']['chips']}")
+
 
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
@@ -353,8 +394,9 @@ class PokerGame:
             else:
                 ip_experiences.append((state_representation, action_int, valid_actions))
 
-
+            print("Starting process action")
             self.process_preflop_action(action)
+            print("Finish process action")
         return game_state, (oop_experiences, ip_experiences)
 
     def action_to_int(self, action):
@@ -471,6 +513,11 @@ class PokerGame:
             state_representation = self.get_state_representation()
 
             logging.info(f"Current State: {state}")
+            print(f"\nCommunity Cards: {state['community_cards']}")
+            print(f"Pot: {state['pot']}")
+            print(f"Your Hand: {self.get_player_hand()}")
+            print(f"Your Chips: {state[self.current_player.name.lower() + '_player']['chips']}")
+
 
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
@@ -488,6 +535,7 @@ class PokerGame:
 
             valid_actions = self.get_valid_postflop_actions()
             action = self.get_player_action(valid_actions)
+            print(action)
             action_int = self.action_to_int(action)
 
             if self.current_player == self.oop_player:
