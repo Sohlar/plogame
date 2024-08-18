@@ -32,7 +32,7 @@ class Player:
 
     def reset_chips():
         for player in Player.get_players():
-            player.chips = 200
+            player.chips = CONST_100bb
 
 
 class Deck:
@@ -53,8 +53,8 @@ class Deck:
 class PokerGame:
     def __init__(self):
         self.deck = Deck()
-        self.oop_player = Player(name="OOP", chips=200)
-        self.ip_player = Player(name="IP", chips=200)
+        self.oop_player = Player(name="OOP", chips=CONST_100bb)
+        self.ip_player = Player(name="IP", chips=CONST_100bb)
         self.initialize_game_state()
 
         #Initialize DQN agents
@@ -200,8 +200,8 @@ class PokerGame:
 
 
     def calculate_rewards(self, game_state):
-        oop_reward = game_state['oop_player']['chips'] - 200
-        ip_reward = game_state['ip_player']['chips'] - 200
+        oop_reward = game_state['oop_player']['chips'] - CONST_100bb
+        ip_reward = game_state['ip_player']['chips'] - CONST_100bb
 
         return oop_reward, ip_reward
 
