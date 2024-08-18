@@ -52,7 +52,6 @@ class DQNAgent:
         if torch.cuda.is_available():
             print("Cuda is Available. GPU will be used")
             print(f"GPU name: {torch.cuda.get_device_name(0)}")
-            print(f"Number of GPUs: {torch.cuda.get_device_name(0)}")
             device = torch.device("cuda")
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
         self.action_size = action_size  # Number of possible actions (fold, call, raise)

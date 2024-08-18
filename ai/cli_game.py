@@ -7,6 +7,11 @@ from phevaluator import evaluate_omaha_cards
 from logging_config import setup_logging
 import torch
 
+CONST_100bb = 200
+CONST_200bb = 400
+CONST_300bb = 600
+
+
 setup_logging()
 #### Player Class ####
 class Player:
