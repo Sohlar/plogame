@@ -60,10 +60,6 @@ class Deck:
 class PokerGame:
     def __init__(self, human_position=None, ai_agent=None):
         self.deck = Deck()
-<<<<<<< HEAD
-        self.oop_player = Player(name="OOP", chips=CONST_100bb)
-        self.ip_player = Player(name="IP", chips=CONST_100bb)
-=======
 
         if human_position == 'oop':
             self.oop_player = HumanPlayer(name="OOP", chips=200)
@@ -75,7 +71,6 @@ class PokerGame:
             self.oop_player = Player(name="OOP", chips=200)
             self.ip_player = Player(name="IP", chips=200)
 
->>>>>>> 516db94 (Add Ability to load in and play versus models.)
         self.initialize_game_state()
 
         #Initialize DQN agents
