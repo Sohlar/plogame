@@ -62,8 +62,10 @@ class Deck:
 
 
 class PokerGame:
-    def __init__(self, human_position=None, ai_agent=None):
+    def __init__(self, human_position=None, oop_agent=None, ip_agent=None):
         self.deck = Deck()
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         if human_position == "oop":
             self.oop_player = HumanPlayer(name="OOP", chips=200)
@@ -81,14 +83,17 @@ class PokerGame:
         self.state_size = 7 + (5 * 2) + 2 * 4 * 2
         self.action_size = 4  # check, call, bet, fold
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        if ai_agent:
-            self.oop_agent = ai_agent if isinstance(self.oop_player, Player) else None
-            self.ip_agent = ai_agent if isinstance(self.ip_player, Player) else None
+        if oop_agent:
+            self.oop_agent = oop_agent
         else:
             self.oop_agent = DQNAgent(self.state_size, self.action_size)
+        if ip_agent:
+            self.ip_agent = ip_agent
+        else:
             self.ip_agent = DQNAgent(self.state_size, self.action_size)
+
+        self.oop_agent.model.to(self.device)
+        self.ip_agent.model.to(self.device)
 
         logging.info("PokerGame initialized")
 
@@ -144,6 +149,7 @@ class PokerGame:
         self.oop_committed = 2
         self.street = "preflop"
         self.waiting_for_action = False
+        self.is_allin = False
 
     def deal_cards(self):
         for player in [self.oop_player, self.ip_player]:
@@ -169,6 +175,11 @@ class PokerGame:
         ip_experiences = []
 
         game_state, round_experiences = self.preflop_betting()
+        if game_state['is_allin']:
+            self.deal_community_cards(5)
+            game_state = self.determine_showdown_winner()
+            game_state['hand_over'] = True
+            
         oop_experiences.extend(round_experiences[0])
         ip_experiences.extend(round_experiences[1])
 
@@ -178,11 +189,21 @@ class PokerGame:
             oop_experiences.extend(round_experiences[0])
             ip_experiences.extend(round_experiences[1])
 
+            if game_state['is_allin']:
+                self.deal_community_cards(2)
+                game_state = self.determine_showdown_winner()
+                game_state['hand_over'] = True
+
             if not game_state["hand_over"]:
                 print("\nDEALING TURN")
                 game_state, round_experiences = self.deal_turn()
                 oop_experiences.extend(round_experiences[0])
                 ip_experiences.extend(round_experiences[1])
+
+                if game_state['is_allin']:
+                    self.deal_community_cards(1)
+                    game_state = self.determine_showdown_winner()
+                    game_state['hand_over'] = True
 
                 if not game_state["hand_over"]:
                     print("\nDEALING RIVER")
@@ -214,6 +235,8 @@ class PokerGame:
 
     def determine_showdown_winner(self):
         logging.info("Determining Showdown Winner")
+        print(f"\nIP Tables: {self.ip_player.hand}")
+        print(f"\nOOP Tables: {self.oop_player.hand}")
         updated_state = self.get_game_state()
         # fmt: off
         ip_rank = evaluate_omaha_cards(
@@ -227,8 +250,11 @@ class PokerGame:
         # fmt: on
 
         if ip_rank < oop_rank:
+            print(f"{updated_state['ip_player']['name']} wins {self.pot}")
+            print(f"{self.ip_player.hand}")
             updated_state["ip_player"]["chips"] += self.pot
         elif oop_rank < ip_rank:
+            print(f"{updated_state['oop_player']['name']} wins {self.pot}")
             updated_state["oop_player"]["chips"] += self.pot
         else:
             updated_state["ip_player"]["chips"] += self.pot / 2
@@ -273,6 +299,7 @@ class PokerGame:
         self.num_actions = 0
         self.last_action = None
         self.hand_over = False
+        self.is_allin = False
 
     def get_game_state(self):
         return {
@@ -284,6 +311,7 @@ class PokerGame:
             "num_actions": self.num_actions,
             "hand_over": self.hand_over,
             "waiting_for_action": self.waiting_for_action,
+            "is_allin": self.is_allin,
             "oop_player": {
                 "name": self.oop_player.name,
                 "chips": self.oop_player.chips,
@@ -389,7 +417,10 @@ class PokerGame:
             print(f"Pot: {game_state['pot']}")
             print(f"Your Hand: {self.get_player_hand()}")
             print(
-                f"Your Chips: {game_state[self.current_player.name.lower() + '_player']['chips']}"
+                f"IP Chips: {game_state[self.ip_player.name.lower() + '_player']['chips']}"
+            )
+            print(
+                f"OOP Chips: {game_state[self.oop_player.name.lower() + '_player']['chips']}"
             )
 
             # Instead of prompting for input, we'll return the game state
@@ -458,6 +489,7 @@ class PokerGame:
                 self.oop_committed = bet_amount
                 self.current_bet = bet_amount
         else:
+            self.is_allin = True
             if self.current_player.name == self.ip_player.name:
                 self.ip_committed += self.current_player.chips
             else:
@@ -527,7 +559,10 @@ class PokerGame:
             print(f"Pot: {state['pot']}")
             print(f"Your Hand: {self.get_player_hand()}")
             print(
-                f"Your Chips: {state[self.current_player.name.lower() + '_player']['chips']}"
+                f"IP Chips: {state[self.ip_player.name.lower() + '_player']['chips']}"
+            )
+            print(
+                f"OOP Chips: {state[self.oop_player.name.lower() + '_player']['chips']}"
             )
 
             if self.hand_over or self.num_active_players == 1:
@@ -538,7 +573,7 @@ class PokerGame:
                 return game_state, (oop_experiences, ip_experiences)
 
             all_players_acted = self.num_actions >= self.num_active_players
-            all_bets_settled = self.oop_player.chips == self.ip_player.chips
+            all_bets_settled = self.oop_committed == self.ip_committed
             if all_players_acted and all_bets_settled:
                 game_state = self.get_game_state()
                 game_state["message"] = f"{street.capitalize()} betting complete"
@@ -558,6 +593,11 @@ class PokerGame:
                 ip_experiences.append((state_representation, action_int, valid_actions))
 
             self.process_postflop_action(action)
+
+            if self.last_action == "call" and self.oop_committed == self.ip_committed:
+                game_state = self.get_game_state()
+                game_state["message"] = f"{street.capitalize()} betting complete"
+                return game_state, (oop_experiences, ip_experiences)
         return game_state, (oop_experiences, ip_experiences)
 
     def process_postflop_action(self, action):
@@ -599,6 +639,7 @@ class PokerGame:
                 self.oop_committed += bet_amount
                 self.current_bet = bet_amount
         else:
+            self.is_allin = True
             if self.current_player == self.ip_player:
                 self.ip_committed += self.ip_player.chips
             else:
@@ -611,16 +652,26 @@ class PokerGame:
 
     def handle_postflop_call(self):
         logging.info("Handling postflop CALL for {self.current_player.name}")
-        call_amount = self.current_bet
+        if self.current_player.name == self.oop_player.name:
+            call_amount = self.oop_committed - self.ip_committed
+        else:
+            call_amount = self.ip_committed - self.oop_committed
         if call_amount <= self.current_player.chips:
-            self.current_player.chips -= call_amount
-            self.pot += call_amount
+            self.current_player.chips += call_amount
+            self.pot -= call_amount
+            if self.current_player == self.oop_player:
+                self.oop_committed = self.ip_committed
+            else:
+                self.ip_committed = self.oop_committed
         else:
             # This is prone to bug. Only works under equal starting stacks.
             all_in_amount = self.current_player.chips
             self.current_player.chips = 0
             self.pot += all_in_amount
-            difference = call_amount - all_in_amount
+            if self.current_player == self.oop_player:
+                self.oop_committed += all_in_amount
+            else:
+                self.ip_committed += all_in_amount
             """
             other_player = (
                 self.ip_player

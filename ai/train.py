@@ -6,6 +6,7 @@ import time
 from logging_config import setup_logging
 import logging
 import torch.cuda
+import datetime
 
 setup_logging()
 
@@ -22,7 +23,7 @@ def list_available_models():
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
 
-def train_dqn_poker(game, episodes, batch_size=32):
+def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True):
     logging.info("Starting DQN training for PLO...")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,30 +36,37 @@ def train_dqn_poker(game, episodes, batch_size=32):
         game_state = game.play_hand()
 
         # Train every hand
-        if len(game.oop_agent.memory) > batch_size:
+        if train_oop and len(game.oop_agent.memory) > batch_size:
             oop_loss = game.oop_agent.replay(batch_size)
-        if len(game.ip_agent.memory) > batch_size:
+        if train_ip and len(game.ip_agent.memory) > batch_size:
             ip_loss = game.ip_agent.replay(batch_size)
 
         # Update target models
         if e % 10 == 0:
-            game.oop_agent.update_target_model()
-            game.ip_agent.update_target_model()
+            if train_oop:
+                game.oop_agent.update_target_model()
+            if train_ip:
+                game.ip_agent.update_target_model()
         # Progress Report
         if e % 100 == 0:
             logging.info(
                 f"Episode: {e}/{episodes}"
             )
-            if "oop_loss" in locals() and "ip_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}, IP Loss: {ip_loss:.4f}")
+            if train_oop and"oop_loss" in locals():
+                logging.info(f"OOP Loss: {oop_loss:.4f}")
+            if train_ip and "ip_loss" in locals():
+                logging.info(f"OOP Loss: {oop_loss:.4f}")
 
     print("\nTraining Complete!")
     print("Final Chip Counts:")
     print(f"OOP Player chips: {game.oop_player.chips}")
     print(f"IP Player chips: {game.ip_player.chips}")
 
-    torch.save(game.oop_agent.model.state_dict(), "./ai/models/oop_dqn_model.pth")
-    torch.save(game.ip_agent.model.state_dict(), "./ai/models/ip_dqn_model.pth")
+    if train_oop:
+        save_model(game.oop_agent, "oop")
+    if train_ip:
+        save_model(game.ip_agent, "ip")
+
 
 
 def main():
@@ -82,17 +90,46 @@ def main():
         chosen_model = f"./ai/models/{models[model_choice-1]}"
 
         ai_agent = load_model(chosen_model)
-        game = PokerGame(human_position=position, ai_agent=ai_agent)
+        game = PokerGame(human_position=position, 
+                         oop_agent=ai_agent if position == 'ip' else None,
+                         ip_agent=ai_agent if position == 'oop' else None)
+
         play_against_ai(game)
     else:
         episode_choice = int(input("\nEnter # of hands to train: "))
+        train_oop = input("Train OOP model? (y/n): ").lower() == 'y'
+        train_ip = input("Train IP model? (y/n): ").lower() == 'y'
+
+        oop_agent = None
+        ip_agent = None
+
+        if not train_oop:
+            print("\nAvailable OOP Models:")
+            models = list_available_models()
+            for i, model in enumerate(models):
+                print(f"{i+1}. {model}")
+            model_choice = int(input("\nEnter the number of the OOP model to use: "))
+            oop_model_path = f"./ai/models/{models[model_choice-1]}"
+            oop_agent = load_model(oop_model_path)
+            oop_agent.model.eval()
+
+        if not train_ip:
+            print("\nAvailable IP Models:")
+            models = list_available_models()
+            for i, model in enumerate(models):
+                print(f"{i+1}. {model}")
+            model_choice = int(input("\nEnter the number of the IP model to use: "))
+            ip_model_path = f"./ai/models/{models[model_choice-1]}"
+            ip_agent = load_model(ip_model_path)
+            ip_agent.model.eval()
+
         game = PokerGame()
         num_episodes = episode_choice
         batch_size = 32
         train_dqn_poker(game, num_episodes, batch_size)
 
     end_time = time.time()
-    print(end_time - start_time)
+    print(f"Total Time: {end_time - start_time:.2f} seconds")
 
 def play_against_ai(game):
     while True:
@@ -104,6 +141,12 @@ def play_against_ai(game):
         play_again = input("Do you want to play again (y/n)")
         if play_again != 'y':
             break
+        
+def save_model(agent, position):
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"./ai/models/{position}_dqn_model_{timestamp}.pth"
+    torch.save(agent.model.state_dict(), filename)
+    print(f"Saved {position} model: {filename}")
 
 if __name__ == "__main__":
     main()
