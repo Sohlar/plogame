@@ -6,6 +6,7 @@ from agent import DQNAgent
 from phevaluator import evaluate_omaha_cards
 from logging_config import setup_logging
 import torch
+from metrics import episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon
 
 CONST_100bb = 200
 CONST_200bb = 400
@@ -223,6 +224,20 @@ class PokerGame:
         for state, action, _ in ip_experiences:
             self.ip_agent.remember(state, action, ip_reward, final_state, True)
 
+        loss.labels('oop').set(oop_loss if oop_loss is not None else 0)
+        loss.labels('ip').set(oop_loss if oop_loss is not None else 0)
+
+        # Update metrics after each hand
+        episode_reward.labels('oop').set(oop_reward)
+        episode_reward.labels('ip').set(ip_reward)
+        cumulative_reward.labels('oop').inc(oop_reward)
+        cumulative_reward.labels('ip').inc(ip_reward)
+        player_chips.labels('oop').set(self.oop_player.chips)
+        player_chips.labels('ip').set(self.ip_player.chips)
+        pot_size.set(self.pot)
+        community_cards.set(len(self.community_cards))
+        episodes_completed.inc()
+
         return game_state
 
     def get_player_hand(self):
@@ -259,6 +274,8 @@ class PokerGame:
         else:
             updated_state["ip_player"]["chips"] += self.pot / 2
             updated_state["oop_player"]["chips"] += self.pot / 2
+            
+        print(f"\nCommunity Cards: {self.community_cards}")
 
         updated_state["hand_over"] = True
 
@@ -362,20 +379,28 @@ class PokerGame:
         logging.info(f"Getting {self.current_player.name}'s Action: ({valid_actions})")
         if isinstance(self.current_player, HumanPlayer):
             return self.current_player.get_action(valid_actions)
-
-        state = self.get_state_representation()
-        if self.current_player == self.oop_player:
-            action = self.oop_agent.act(state)
         else:
-            action = self.ip_agent.act(state)
+            state = self.get_state_representation()
+            if self.current_player == self.oop_player:
+                action = self.oop_agent.act(state)
+                player = 'oop'
+                agent = self.oop_agent
+            else:
+                action = self.ip_agent.act(state)
+                player = 'ip'
+                agent = self.ip_agent
 
-        action_map = {0: "fold", 1: "check", 2: "call", 3: "raise"}
-        chosen_action = action_map[action]
+            action_map = {0: "fold", 1: "check", 2: "call", 3: "raise"}
+            chosen_action = action_map[action]
 
-        if chosen_action in valid_actions:
-            return chosen_action
-        else:
-            return np.random.choice(valid_actions)
+            q_value.labels(player).set(np.max(agent.model(state).cpu().data.numpy()))
+            epsilon.labels(player).set(agent_epsilon)
+            action_taken.labels(player, chosen_action). inc()
+
+            if chosen_action in valid_actions:
+                return chosen_action
+            else:
+                return np.random.choice(valid_actions)
 
     def preflop_betting(self):
         # self.num_active_players = len(

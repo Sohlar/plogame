@@ -108,6 +108,9 @@ class DQNAgent:
 
         with torch.no_grad():
             act_values = self.model(state)
+
+        q_value.set(np.max(act_values.cpu().data.numpy()))
+        epsilon.set(self.epsilon)
         # Exploitation: choose best action based on learned Q-values
         return np.argmax(act_values.cpu().data.numpy())
 
@@ -146,6 +149,8 @@ class DQNAgent:
         # Decay epsilon to gradually shift from exploration to exploitation
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+
+        loss.set(loss.item())
 
         return loss.item()
 

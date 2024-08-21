@@ -57,6 +57,8 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
             if train_ip and "ip_loss" in locals():
                 logging.info(f"OOP Loss: {oop_loss:.4f}")
 
+            update_system_metrics()
+
     print("\nTraining Complete!")
     print("Final Chip Counts:")
     print(f"OOP Player chips: {game.oop_player.chips}")
