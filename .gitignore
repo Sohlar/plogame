@@ -12,3 +12,4 @@ poker/static/
 /ai/logs/*
 /ai/models/*
 
+*.log

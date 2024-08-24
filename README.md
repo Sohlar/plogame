@@ -13,101 +13,127 @@ This is a Django project for a Pot Limit Omaha Trainer. The project uses Django 
 
 ### Prerequisites
 
+- Docker and Docker Compose
+
+For local development without Docker:
 - Python 3.x
-- Django 5.0.7
 - Node.js and npm (for frontend)
 
-### Installation
+
+## Quick Start with Docker
 
 1. Clone the repository:
+    ```
+    git clone https://github.com/yourusername/plo_project.git
+    cd plo_project
+    ```
 
-    `git clone https://github.com/yourusername/plo_project.git`
-    
-    `cd plo_project`
+2. Build and run the Docker containers:
+    ```
+    docker-compose up --build
+    ```
 
-2. Create a virtual environment and activate it:
+3. Access the application at `http://localhost:8000`
 
-    `python3 -m venv venv`
-    
-    `source venv/bin/activate`  (On Windows use `venv\Scripts\activate`)
+## Local Development Setup (without Docker)
 
-3. Install the required packages:
+If you prefer to set up the project locally without Docker:
 
-    `pip install -r requirements.txt`
+1. Set up a Python virtual environment and install backend dependencies:
+    ```
+    python3 -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    pip install -r requirements.txt
+    ```
 
-4. Apply migrations:
+2. Apply migrations:
+    ```
+    python manage.py migrate
+    ```
 
-    `python manage.py migrate`
+3. Run the development server:
+    ```
+    daphne plo_project.asgi:application
+    ```
 
-5. Run the development server:
-
-    `daphne plo_project.asgi:application`
-
-### Running the Poker Game
-
-You can sample the game from the command line interface using the following command:
-
-`python3 ./poker/cli_game`
-
-### @frontend Setup
-
-1. Navigate to the frontend directory:
-
-    `cd frontend`
-
-2. Install dependencies:
-
-    `npm install`
-
-3. Start the development server:
-
-    `npm start`
-
-### @build_react.sh
-
-To build the React frontend and move the built files to the appropriate Django directories, run:
-
-`./build_react.sh`
-
-This script will:
-1. Build the React app
-2. Remove old build files from Django directories
-3. Move the new build files to the correct locations for Django to serve
+4. In a separate terminal, set up and run the frontend:
+    ```
+    cd frontend
+    npm install
+    npm start
+    ```
 
 ## Project Structure
 
-- `plo_project/settings.py`: Main settings file for the Django project.
-- `poker/cli_game`: Command line interface for sampling the Poker game.
-- `frontend/`: React-based frontend application.
-- `build_react.sh`: Script to build and integrate the React frontend with Django.
+- `plo_project/`: Main Django project directory
+- `poker/`: Django app for poker game logic
+- `frontend/`: React-based frontend application
+- `Dockerfile`: Docker configuration for the backend
+- `docker-compose.yml`: Docker Compose configuration for the entire project
 
-## Settings
+## Key Components
 
-Key settings in `plo_project/settings.py`:
+### Backend
 
-- `INSTALLED_APPS`: Includes Django apps and the `channels` app for WebSocket support.
-- `ASGI_APPLICATION`: Points to the ASGI application for Channels.
-- `CHANNEL_LAYERS`: Configuration for Channels layers.
-- `DATABASES`: Configured to use SQLite by default.
+- `plo_project/settings.py`: Main settings file for the Django project
+- `poker/consumers.py`: WebSocket consumer for real-time game updates
+- `poker/models.py`: Database models for the poker game
 
-For more details, refer to the [Django documentation](https://docs.djangoproject.com/en/5.0/).
+### Frontend
 
-## @frontend
+- `frontend/src/App.js`: Main React component and routing setup
+- `frontend/src/components/`: React components for various features
 
-The frontend is built with React and includes the following key components:
+## Development
 
-- Material-UI for styling
-- React Router for navigation
-- A poker strategy grid component
+- For backend development, work in the Django project and app directories.
+- For frontend development, work in the `frontend/` directory.
+- When using Docker, changes to the code will require rebuilding the containers:
+    ```
+    docker-compose up --build
+    ```
+
+## Building the Frontend
+
+To build the React frontend and integrate it with Django:
+    ```
+    ./build_react.sh
+    ```
+This script will build the React app, remove old build files, and move the new build files to the correct locations for Django to serve.
+
+## Testing
+
+- Backend tests: `docker-compose run web python manage.py test`
+- Frontend tests: `docker-compose run frontend npm test`
 
 ## Sim logs
-`tail -f poker_game.log`
+
+To view simulation logs:
+    ```
+    docker-compose logs -f web
+    ```
 
 ## TODO
 
-- **Finish Communication Protocol**: Finalize the communication protocol for real-time game updates and player interactions.
-- **Dynamic HTML Generation from WebSocket**: Implement dynamic HTML updates based on WebSocket messages to enhance the user experience.
+- Finish Communication Protocol
+- Dynamic HTML Generation from WebSocket
+- Model Training
+- Automated Testing
+- CI/CD Setup
+- Scalability Improvements
+- Security Enhancements
+- Documentation
+- Frontend: Enhance User Interface
+- Frontend: Implement State Management
+
+##WIP
 - **Model Training**: Develop and train machine learning models to improve game strategies and player experience.
+
+
+## TODO
+
+- **Finish Communication Protocol**: Finalize the websocket protocol for real-time game updates and player interactions.
+- **Dynamic HTML Generation from WebSocket**: Implement dynamic HTML updates based on WebSocket messages to enhance the user experience.
 - **Automated Testing**: Implement comprehensive unit and integration tests to ensure code quality and reliability.
 - **Continuous Integration/Continuous Deployment (CI/CD)**: Set up CI/CD pipelines for automated testing and deployment.
 - **Scalability Improvements**: Optimize the application for scalability to handle a large number of concurrent users.
