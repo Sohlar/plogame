@@ -19,7 +19,7 @@ def load_model(model_path):
     return agent
 
 def list_available_models():
-    models_dir = "./ai/models"
+    models_dir = "/opt/ai/models"
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
 
@@ -87,7 +87,7 @@ def main():
             print(f"{i+1}. {model}")
 
         model_choice = int(input("\nEnter the number of the model: "))
-        chosen_model = f"./ai/models/{models[model_choice-1]}"
+        chosen_model = f"/opt/ai/models/{models[model_choice-1]}"
 
         ai_agent = load_model(chosen_model)
         game = PokerGame(human_position=position, 
@@ -109,7 +109,7 @@ def main():
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
             model_choice = int(input("\nEnter the number of the OOP model to use: "))
-            oop_model_path = f"./ai/models/{models[model_choice-1]}"
+            oop_model_path = f"/opt/ai/models/{models[model_choice-1]}"
             oop_agent = load_model(oop_model_path)
             oop_agent.model.eval()
 
@@ -119,7 +119,7 @@ def main():
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
             model_choice = int(input("\nEnter the number of the IP model to use: "))
-            ip_model_path = f"./ai/models/{models[model_choice-1]}"
+            ip_model_path = f"/opt/ai/models/{models[model_choice-1]}"
             ip_agent = load_model(ip_model_path)
             ip_agent.model.eval()
 
@@ -144,7 +144,7 @@ def play_against_ai(game):
         
 def save_model(agent, position):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"./ai/models/{position}_dqn_model_{timestamp}.pth"
+    filename = f"/opt/ai/models/{position}_dqn_model_{timestamp}.pth"
     torch.save(agent.model.state_dict(), filename)
     print(f"Saved {position} model: {filename}")
 
