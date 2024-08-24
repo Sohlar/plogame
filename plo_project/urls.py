@@ -25,6 +25,7 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path(r"^.*", TemplateView.as_view(template_name="index.html"), name="index"),
     path("api/", include("decision_tree.urls")),
+    path("poker/", include("poker.urls")),
+    path(r"^.*", TemplateView.as_view(template_name="index.html"), name="index"),
 ]

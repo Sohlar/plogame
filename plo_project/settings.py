@@ -63,9 +63,7 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
-            {
-                "DIRS": [os.path.join(BASE_DIR, "poker", "templates")],
-            },
+            os.path.join(BASE_DIR, "poker", "templates")
         ],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -91,8 +89,12 @@ WSGI_APPLICATION = "plo_project.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": BASE_DIR / "plo_db",
+        "USER": "plo_user",
+        "PASSWORD": "plo_password",
+        "HOST": "db",
+        "PORT": 5432,
     }
 }
 
