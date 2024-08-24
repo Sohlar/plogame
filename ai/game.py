@@ -1,6 +1,6 @@
 import torch
 import os
-from cli_game import PokerGame, HumanPlayer
+from ai_trainer import PokerGame, HumanPlayer
 from agent import DQNAgent
 import time
 from logging_config import setup_logging
