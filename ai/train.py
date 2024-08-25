@@ -1,6 +1,6 @@
 import torch
 import os
-from cli_game import PokerGame, HumanPlayer
+from ai_trainer import PokerGame, HumanPlayer
 from agent import DQNAgent
 import time
 from logging_config import setup_logging
@@ -19,7 +19,7 @@ def load_model(model_path):
     return agent
 
 def list_available_models():
-    models_dir = "../ai/models"
+    models_dir = "./models"
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
 
@@ -70,7 +70,6 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
 
 
 def main():
-    start_time = time.time()
 
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
@@ -87,7 +86,7 @@ def main():
             print(f"{i+1}. {model}")
 
         model_choice = int(input("\nEnter the number of the model: "))
-        chosen_model = f"../ai/models/{models[model_choice-1]}"
+        chosen_model = f"./models/{models[model_choice-1]}"
 
         ai_agent = load_model(chosen_model)
         game = PokerGame(human_position=position, 
@@ -109,7 +108,7 @@ def main():
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
             model_choice = int(input("\nEnter the number of the OOP model to use: "))
-            oop_model_path = f"../ai/models/{models[model_choice-1]}"
+            oop_model_path = f"./models/{models[model_choice-1]}"
             oop_agent = load_model(oop_model_path)
             oop_agent.model.eval()
 
@@ -119,17 +118,17 @@ def main():
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
             model_choice = int(input("\nEnter the number of the IP model to use: "))
-            ip_model_path = f"../ai/models/{models[model_choice-1]}"
+            ip_model_path = f"./models/{models[model_choice-1]}"
             ip_agent = load_model(ip_model_path)
             ip_agent.model.eval()
 
+        start_time = time.time()
         game = PokerGame()
         num_episodes = episode_choice
         batch_size = 32
         train_dqn_poker(game, num_episodes, batch_size)
-
-    end_time = time.time()
-    print(f"Total Time: {end_time - start_time:.2f} seconds")
+        end_time = time.time()
+        print(f"Total Time: {end_time - start_time:.2f} seconds")
 
 def play_against_ai(game):
     while True:
@@ -144,7 +143,7 @@ def play_against_ai(game):
         
 def save_model(agent, position):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"../ai/models/{position}_dqn_model_{timestamp}.pth"
+    filename = f"./models/{position}_dqn_model_{timestamp}.pth"
     torch.save(agent.model.state_dict(), filename)
     print(f"Saved {position} model: {filename}")
 

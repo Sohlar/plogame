@@ -117,8 +117,7 @@ class PokerGame:
         for card in community_cards:
             representation.extend(self.encode_card(card))
 
-        for card in state["oop_player"]["hand"]:
-            representation.extend(self.encode_card(card))
+        for card in state["oop_player"]["hand"]: representation.extend(self.encode_card(card))
 
         for card in state["ip_player"]["hand"]:
             representation.extend(self.encode_card(card))

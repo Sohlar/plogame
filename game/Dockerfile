@@ -1,15 +1,11 @@
-FROM ubuntu:22.04
-RUN apt-get update -y
-RUN apt-get upgrade -y
-RUN apt-get install -y curl vim nodejs npm python3 pip
-
-COPY ./ai /opt/ai
-COPY ./*.* /opt/
-
-WORKDIR /opt/
+FROM pybase as builder
 
 EXPOSE 80
 EXPOSE 443
 
-WORKDIR /opt
-CMD ./start.sh
+COPY ./Backend/* /app/
+
+WORKDIR /app
+
+RUN mkdir models
+RUN mkdir logs

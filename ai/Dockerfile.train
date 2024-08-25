@@ -1,0 +1,8 @@
+FROM pybase as builder
+
+COPY ./*.py /app/
+
+WORKDIR /app
+
+RUN mkdir logs
+RUN mkdir models

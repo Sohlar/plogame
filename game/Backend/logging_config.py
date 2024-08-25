@@ -5,7 +5,7 @@ def setup_logging():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         handlers=[
-                            logging.FileHandler("../ai/logs/poker_ai.log", mode='a')
+                            logging.FileHandler("./logs/poker_ai.log", mode='a')
                         ])
 
     # Disable automatic flushing for performance

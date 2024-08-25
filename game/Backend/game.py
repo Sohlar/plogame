@@ -1,6 +1,6 @@
 import torch
 import os
-from ai_trainer import PokerGame, HumanPlayer
+from cli_game import PokerGame, HumanPlayer
 from agent import DQNAgent
 import time
 from logging_config import setup_logging
@@ -25,7 +25,6 @@ def list_available_models():
 
 
 def main():
-    start_time = time.time()
 
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
@@ -78,13 +77,13 @@ def main():
             ip_agent = load_model(ip_model_path)
             ip_agent.model.eval()
 
+        start_time = time.time()
         game = PokerGame()
         num_episodes = episode_choice
         batch_size = 32
         train_dqn_poker(game, num_episodes, batch_size)
-
-    end_time = time.time()
-    print(f"Total Time: {end_time - start_time:.2f} seconds")
+        end_time = time.time()
+        print(f"Total Time: {end_time - start_time:.2f} seconds")
 
 def play_against_ai(game):
     while True:
