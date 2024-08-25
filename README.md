@@ -24,7 +24,7 @@ This is a project for a Pot Limit Omaha Trainer.
 
    `./build_trainer.sh`
 
-    `docker exec --it -v ./models:/app/models plo_trainer /bin/bash`
+    `docker run -it -v ./models:/app/models plo_trainer /bin/bash`
 
     `python3 ./train.py`
 
@@ -36,7 +36,7 @@ You can sample the game from the command line interface using the following comm
 
 `./build_game.sh`
 
-`docker exec --it -v ./models:/app/models plo /bin/bash`
+`docker run -it -v ./models:/app/models plo /bin/bash`
 
 ## Project Structure
 
