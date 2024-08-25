@@ -4,11 +4,9 @@
 .vscode/
 
 
-
-db.sqlite3
-node_modules/
-poker/static/
-/poker/templates/build/
+*venv*
 /ai/logs/*
 /ai/models/*
 
+/game/logs/*
+/game/models/*

@@ -1,0 +1,6 @@
+[ ] Need to make the ai trainer available by cli args 
+[ ] Need to create middleware interface api for the game.py to accept json for ease of comms with middleware
+[ ] Need to create the middleware pieces for websocket comms.
+[ ] Remove superfluous code (I need to strip out anything that isn't core gameplay and logging)
+[x] Generate Baseline models that will be included on build
+[x] Setup service distribution Dockerfile so that the whole package rolls from a container directly.

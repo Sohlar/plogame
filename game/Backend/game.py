@@ -1,6 +1,6 @@
 import torch
 import os
-from ai_trainer import PokerGame, HumanPlayer
+from cli_game import PokerGame, HumanPlayer
 from agent import DQNAgent
 import time
 from logging_config import setup_logging
@@ -22,51 +22,6 @@ def list_available_models():
     models_dir = "./models"
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
-
-def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True):
-    logging.info("Starting DQN training for PLO...")
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    game.oop_agent.model.to(device)
-    game.oop_agent.target_model.to(device)
-    game.ip_agent.model.to(device)
-    game.ip_agent.target_model.to(device)
-
-    for e in range(episodes):
-        game_state = game.play_hand()
-
-        # Train every hand
-        if train_oop and len(game.oop_agent.memory) > batch_size:
-            oop_loss = game.oop_agent.replay(batch_size)
-        if train_ip and len(game.ip_agent.memory) > batch_size:
-            ip_loss = game.ip_agent.replay(batch_size)
-
-        # Update target models
-        if e % 10 == 0:
-            if train_oop:
-                game.oop_agent.update_target_model()
-            if train_ip:
-                game.ip_agent.update_target_model()
-        # Progress Report
-        if e % 100 == 0:
-            logging.info(
-                f"Episode: {e}/{episodes}"
-            )
-            if train_oop and"oop_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
-            if train_ip and "ip_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
-
-    print("\nTraining Complete!")
-    print("Final Chip Counts:")
-    print(f"OOP Player chips: {game.oop_player.chips}")
-    print(f"IP Player chips: {game.ip_player.chips}")
-
-    if train_oop:
-        save_model(game.oop_agent, "oop")
-    if train_ip:
-        save_model(game.ip_agent, "ip")
-
 
 
 def main():

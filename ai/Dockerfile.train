@@ -1,0 +1,5 @@
+FROM pybase as builder
+
+COPY ./*.py /app/
+
+WORKDIR /app
