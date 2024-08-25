@@ -4,7 +4,9 @@
 .vscode/
 
 
-/venv
+*venv*
 /ai/logs/*
 /ai/models/*
 
+/game/logs/*
+/game/models/*

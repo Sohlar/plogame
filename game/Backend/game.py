@@ -19,54 +19,9 @@ def load_model(model_path):
     return agent
 
 def list_available_models():
-    models_dir = "../ai/models"
+    models_dir = "./models"
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
-
-def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True):
-    logging.info("Starting DQN training for PLO...")
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    game.oop_agent.model.to(device)
-    game.oop_agent.target_model.to(device)
-    game.ip_agent.model.to(device)
-    game.ip_agent.target_model.to(device)
-
-    for e in range(episodes):
-        game_state = game.play_hand()
-
-        # Train every hand
-        if train_oop and len(game.oop_agent.memory) > batch_size:
-            oop_loss = game.oop_agent.replay(batch_size)
-        if train_ip and len(game.ip_agent.memory) > batch_size:
-            ip_loss = game.ip_agent.replay(batch_size)
-
-        # Update target models
-        if e % 10 == 0:
-            if train_oop:
-                game.oop_agent.update_target_model()
-            if train_ip:
-                game.ip_agent.update_target_model()
-        # Progress Report
-        if e % 100 == 0:
-            logging.info(
-                f"Episode: {e}/{episodes}"
-            )
-            if train_oop and"oop_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
-            if train_ip and "ip_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
-
-    print("\nTraining Complete!")
-    print("Final Chip Counts:")
-    print(f"OOP Player chips: {game.oop_player.chips}")
-    print(f"IP Player chips: {game.ip_player.chips}")
-
-    if train_oop:
-        save_model(game.oop_agent, "oop")
-    if train_ip:
-        save_model(game.ip_agent, "ip")
-
 
 
 def main():
@@ -87,7 +42,7 @@ def main():
             print(f"{i+1}. {model}")
 
         model_choice = int(input("\nEnter the number of the model: "))
-        chosen_model = f"../ai/models/{models[model_choice-1]}"
+        chosen_model = f"./models/{models[model_choice-1]}"
 
         ai_agent = load_model(chosen_model)
         game = PokerGame(human_position=position, 
@@ -109,7 +64,7 @@ def main():
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
             model_choice = int(input("\nEnter the number of the OOP model to use: "))
-            oop_model_path = f"../ai/models/{models[model_choice-1]}"
+            oop_model_path = f"./models/{models[model_choice-1]}"
             oop_agent = load_model(oop_model_path)
             oop_agent.model.eval()
 
@@ -119,7 +74,7 @@ def main():
             for i, model in enumerate(models):
                 print(f"{i+1}. {model}")
             model_choice = int(input("\nEnter the number of the IP model to use: "))
-            ip_model_path = f"../ai/models/{models[model_choice-1]}"
+            ip_model_path = f"./models/{models[model_choice-1]}"
             ip_agent = load_model(ip_model_path)
             ip_agent.model.eval()
 
@@ -144,7 +99,7 @@ def play_against_ai(game):
         
 def save_model(agent, position):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"../ai/models/{position}_dqn_model_{timestamp}.pth"
+    filename = f"./models/{position}_dqn_model_{timestamp}.pth"
     torch.save(agent.model.state_dict(), filename)
     print(f"Saved {position} model: {filename}")
 

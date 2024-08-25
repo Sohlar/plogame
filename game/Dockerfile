@@ -7,7 +7,6 @@ COPY ./ai /opt/ai
 COPY ./*.* /opt/
 
 WORKDIR /opt/
-RUN pip install -r /opt/requirements.txt
 
 EXPOSE 80
 EXPOSE 443
