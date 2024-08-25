@@ -1,2 +1,4 @@
 #!/bin/bash
-docker build -t pybase . -f ../ai/Dockerfile --no-cache
+cd ../ai
+docker build -t pybase . -f ./Dockerfile --no-cache
+cd ../scripts

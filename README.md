@@ -20,7 +20,9 @@ This is a project for a Pot Limit Omaha Trainer.
     
     `cd plogame/scripts`
 
-    `./build_trainer.sh`
+    `./build_base_image.sh`
+
+   `./build_trainer.sh`
 
     `docker exec --it -v ./models:/app/models plo_trainer /bin/bash`
 
