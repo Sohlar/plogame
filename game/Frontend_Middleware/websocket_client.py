@@ -12,7 +12,7 @@ def test(msg):
         message = websocket.recv()
         print(f"Received: {message}")
 
-test("call")
-test("bet")
-test("fold")
-test("check")
+test("{\"id\": \"1\", \"name\": \"demo\", \"count\": \"0\", \"action\": \"call:0\"}")
+test("{\"id\": \"1\", \"name\": \"demo\", \"count\": \"0\", \"action\": \"bet:50\"}")
+test("{\"id\": \"1\", \"name\": \"demo\", \"count\": \"0\", \"action\": \"fold:0\"}")
+test("{\"id\": \"1\", \"name\": \"demo\", \"count\": \"0\", \"action\": \"check:0\"}")
