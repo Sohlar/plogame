@@ -3,10 +3,16 @@
 import asyncio
 from websockets.sync.client import connect
 
-def hello():
-    with connect("ws://localhost:8765") as websocket:
-        websocket.send("call")
+uri = "localhost"
+port = "8765"
+
+def test(msg):
+    with connect("ws://"+uri+":"+port) as websocket:
+        websocket.send(msg)
         message = websocket.recv()
         print(f"Received: {message}")
 
-hello()
+test("call")
+test("bet")
+test("fold")
+test("check")

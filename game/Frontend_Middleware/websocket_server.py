@@ -3,7 +3,6 @@
 import asyncio
 from websockets.asyncio.server import serve
 
-
 def valid_input(input_str):
     valid_codes = [0,1]
     valid_instructions = ["call","bet","check","fold"]
@@ -17,8 +16,9 @@ def valid_session(stripped_str):
 
 def strip_message(input_str):
     usercode = 0 # temporary value, eventually sessions will correlate to a user in a running session
+    print("Server Received: "+input_str)
     if (valid_input(input_str)==1):
-        return "This is updated"
+        return "This was a valid command"
     return "Invalid command"
 
 async def echo(websocket):
