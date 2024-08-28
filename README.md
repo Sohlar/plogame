@@ -1,13 +1,10 @@
 # PLO Project
 
-This is a Django project for a Pot Limit Omaha Trainer. The project uses Django Channels for handling WebSockets and real-time communication.
+This is a project for a Pot Limit Omaha Trainer. 
 
 ## Features
-
-- Django 5.0.7
-- Django Channels for WebSocket support
 - Poker game implementation
-- @frontend: React-based frontend
+- Docker with multistage builds for containerization and ease of development
 
 ## Quick Start
 
@@ -17,10 +14,15 @@ This is a Django project for a Pot Limit Omaha Trainer. The project uses Django 
 
 For local development without Docker:
 - Python 3.x
+<<<<<<< HEAD
 - Node.js and npm (for frontend)
 
 
 ## Quick Start with Docker
+=======
+
+### Building the Trainer
+>>>>>>> origin/master
 
 1. Clone the repository:
     ```
@@ -28,6 +30,7 @@ For local development without Docker:
     cd plo_project
     ```
 
+<<<<<<< HEAD
 2. Build and run the Docker containers:
     ```
     docker-compose up --build
@@ -105,6 +108,35 @@ This script will build the React app, remove old build files, and move the new b
 
 - Backend tests: `docker-compose run web python manage.py test`
 - Frontend tests: `docker-compose run frontend npm test`
+=======
+    `git clone https://github.com/yourusername/plo_project.git`
+    
+    `cd plogame/scripts`
+
+    `./build_base_image.sh`
+
+   `./build_trainer.sh`
+
+    `docker run -it -v ./models:/app/models plo_trainer /bin/bash`
+
+    `python3 ./train.py`
+
+
+
+### Building/Running the Poker Game
+
+You can sample the game from the command line interface using the following command:
+
+`./build_game.sh`
+
+`docker run -it -v ./models:/app/models plo /bin/bash`
+
+## Project Structure
+
+- `./ai`: Command line interface for sampling the Poker game and training the models.
+- `./game`: Frontend application for interacting with the poker game.
+- `scripts`: Scripts folder for building all the images/multiple stages of docker builds.
+>>>>>>> origin/master
 
 ## Sim logs
 
@@ -140,7 +172,7 @@ To view simulation logs:
 - **Security Enhancements**: Conduct security audits and implement best practices to secure the application.
 - **Documentation**: Improve and expand project documentation for developers and users.
 - **@frontend: Enhance User Interface**: Improve the React-based frontend with more interactive features and responsive design.
-- **@frontend: State Management**: Implement a state management solution (e.g., Redux) for more complex frontend logic.
+- **@frontend**: Implement a frontend.
 
 ## License
 
