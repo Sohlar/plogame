@@ -394,7 +394,7 @@ class PokerGame:
             chosen_action = action_map[action]
 
             q_value.labels(player).set(np.max(agent.model(state).cpu().data.numpy()))
-            epsilon.labels(player).set(agent_epsilon)
+            epsilon.labels(player).set(agent.epsilon)
             action_taken.labels(player, chosen_action). inc()
 
             if chosen_action in valid_actions:

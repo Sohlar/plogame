@@ -3,3 +3,5 @@ FROM pybase as builder
 COPY ./*.py /app/
 
 WORKDIR /app
+
+EXPOSE 8000

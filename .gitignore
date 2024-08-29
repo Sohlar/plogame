@@ -8,9 +8,5 @@
 /ai/logs/*
 /ai/models/*
 
-<<<<<<< HEAD
-*.log
-=======
 /game/logs/*
 /game/models/*
->>>>>>> origin/master

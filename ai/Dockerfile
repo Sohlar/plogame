@@ -10,4 +10,3 @@ RUN mkdir logs
 RUN mkdir models
 
 RUN pip install -r requirements.txt
-

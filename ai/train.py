@@ -7,6 +7,7 @@ from logging_config import setup_logging
 import logging
 import torch.cuda
 import datetime
+from prometheus_client import start_http_server
 
 setup_logging()
 
@@ -150,5 +151,6 @@ def save_model(agent, position):
     print(f"Saved {position} model: {filename}")
 
 if __name__ == "__main__":
+    start_http_server(8000)
     main()
 
