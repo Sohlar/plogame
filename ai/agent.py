@@ -5,6 +5,7 @@ import torch.optim as optim
 import torch.cuda
 import random
 from collections import deque
+from metrics import q_value, epsilon, action_taken
 
 
 class DQN(nn.Module):
@@ -53,6 +54,7 @@ class DQNAgent:
             print("Cuda is Available. GPU will be used")
             print(f"GPU name: {torch.cuda.get_device_name(0)}")
             device = torch.device("cuda")
+        self.name = None
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
         self.action_size = action_size  # Number of possible actions (fold, call, raise)
         self.memory = deque(maxlen=10000)  # Experience replay buffer, crucial for stable learning in poker
@@ -109,8 +111,9 @@ class DQNAgent:
         with torch.no_grad():
             act_values = self.model(state)
 
-        q_value.set(np.max(act_values.cpu().data.numpy()))
-        epsilon.set(self.epsilon)
+        q_value.labels(player='oop' if self.name == 'OOP' else 'ip').set(np.max(act_values.cpu().data.numpy()))
+        epsilon.labels(player='oop' if self.name == 'OOP' else 'ip').set(self.epsilon)
+        action_taken.labels(player_action=f"{'oop' if self.name == 'OOP' else 'ip'}_{action_map[action]}").inc()
         # Exploitation: choose best action based on learned Q-values
         return np.argmax(act_values.cpu().data.numpy())
 
@@ -150,9 +153,9 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-        loss.set(loss.item())
+        loss_value = loss.item()
 
-        return loss.item()
+        return loss_value
 
     def update_target_model(self):
         """

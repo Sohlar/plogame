@@ -6,7 +6,7 @@ from agent import DQNAgent
 from phevaluator import evaluate_omaha_cards
 from logging_config import setup_logging
 import torch
-from metrics import episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon
+from metrics import episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, loss
 
 CONST_100bb = 200
 CONST_200bb = 400
@@ -86,15 +86,24 @@ class PokerGame:
 
         if oop_agent:
             self.oop_agent = oop_agent
+            self.oop_agent.name = 'OOP'
         else:
             self.oop_agent = DQNAgent(self.state_size, self.action_size)
+            self.oop_agent.name = 'OOP'
         if ip_agent:
             self.ip_agent = ip_agent
+            self.oop_agent.name = 'IP'
         else:
             self.ip_agent = DQNAgent(self.state_size, self.action_size)
+            self.oop_agent.name = 'IP'
 
         self.oop_agent.model.to(self.device)
         self.ip_agent.model.to(self.device)
+
+        self.oop_loss = None
+        self.ip_loss = None
+        self.oop_cumulative_reward = 0
+        self.ip_cumulative_reward = 0
 
         logging.info("PokerGame initialized")
 
@@ -224,16 +233,19 @@ class PokerGame:
         for state, action, _ in ip_experiences:
             self.ip_agent.remember(state, action, ip_reward, final_state, True)
 
-        loss.labels('oop').set(oop_loss if oop_loss is not None else 0)
-        loss.labels('ip').set(oop_loss if oop_loss is not None else 0)
+        loss.labels(player='oop').set(self.oop_loss if self.oop_loss is not None else 0)
+        loss.labels(player='ip').set(self.oop_loss if self.oop_loss is not None else 0)
 
-        # Update metrics after each hand
-        episode_reward.labels('oop').set(oop_reward)
-        episode_reward.labels('ip').set(ip_reward)
-        cumulative_reward.labels('oop').inc(oop_reward)
-        cumulative_reward.labels('ip').inc(ip_reward)
-        player_chips.labels('oop').set(self.oop_player.chips)
-        player_chips.labels('ip').set(self.ip_player.chips)
+        episode_reward.labels(player='oop').set(oop_reward)
+        episode_reward.labels(player='ip').set(oop_reward)
+
+        self.oop_cumulative_reward += oop_reward
+        self.ip_cumulative_reward += ip_reward
+        cumulative_reward.labels(player='oop').set(self.oop_cumulative_reward)
+        cumulative_reward.labels(player='ip').set(self.ip_cumulative_reward)
+
+        player_chips.labels(player='oop').set(self.oop_player.chips)
+        player_chips.labels(player='ip').set(self.ip_player.chips)
         pot_size.set(self.pot)
         community_cards.set(len(self.community_cards))
         episodes_completed.inc()
@@ -390,12 +402,13 @@ class PokerGame:
                 player = 'ip'
                 agent = self.ip_agent
 
-            action_map = {0: "fold", 1: "check", 2: "call", 3: "raise"}
+            action_map = {0: "fold", 1: "check", 2: "call", 3: "bet"}
             chosen_action = action_map[action]
 
             q_value.labels(player).set(np.max(agent.model(state).cpu().data.numpy()))
             epsilon.labels(player).set(agent.epsilon)
-            action_taken.labels(player, chosen_action). inc()
+            print(f"Player: {player}\nAction: {chosen_action}")
+            action_taken.labels(player_action=f"{player}_{chosen_action}"). inc()
 
             if chosen_action in valid_actions:
                 return chosen_action

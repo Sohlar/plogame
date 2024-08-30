@@ -2,10 +2,10 @@ from prometheus_client import Gauge, Counter, Histogram
 import psutil
 
 # AI Performance Metrics
-episode_reward = Gauge('episode_reward', 'Reward for the current episode')
-cumulative_reward = Counter('cumulative_reward', 'Total reward across all episodes')
+episode_reward = Gauge('episode_reward', 'Reward for the current episode', ['player'])
+cumulative_reward = Gauge('cumulative_reward', 'Total reward across all episodes', ['player'])
 q_value = Gauge('q_value', 'Current Q-value', ['player'])
-loss = Gauge('loss', 'Current loss value')
+loss = Gauge('loss', 'Current loss value', ['player'])
 epsilon = Gauge('epsilon', 'Current epsilon value', ['player'])
 
 # Game State Metrics
@@ -14,7 +14,7 @@ player_chips = Gauge('player_chips', 'Current player chips', ['player'])
 community_cards = Gauge('community_cards', 'Number of community cards')
 
 # Action Metrics
-action_taken = Counter('action_taken', 'Number of times each action was taken', ['action'])
+action_taken = Counter('action_taken', 'Number of times each action was taken', ['player_action'])
 
 # System Resource Metrics
 cpu_usage = Gauge('cpu_usage', 'Current CPU usage percentage')

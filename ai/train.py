@@ -8,6 +8,7 @@ import logging
 import torch.cuda
 import datetime
 from prometheus_client import start_http_server
+from metrics import loss as loss_metric, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
 
 setup_logging()
 
@@ -39,8 +40,19 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         # Train every hand
         if train_oop and len(game.oop_agent.memory) > batch_size:
             oop_loss = game.oop_agent.replay(batch_size)
+            if oop_loss is not None:
+                game.oop_loss = oop_loss
+                loss_metric.labels(player='oop').set(oop_loss)
+        else:
+            game.oop_loss = None
+
         if train_ip and len(game.ip_agent.memory) > batch_size:
             ip_loss = game.ip_agent.replay(batch_size)
+            if ip_loss is not None:
+                game.ip_loss = ip_loss
+                loss_metric.labels(player='ip').set(ip_loss)
+        else:
+            game.ip_loss = None
 
         # Update target models
         if e % 10 == 0:
@@ -53,10 +65,10 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
             logging.info(
                 f"Episode: {e}/{episodes}"
             )
-            if train_oop and"oop_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
-            if train_ip and "ip_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
+            if train_oop and game.oop_loss is not None:
+                logging.info(f"OOP Loss: {game.oop_loss:.4f}")
+            if train_ip and game.ip_loss is not None:
+                logging.info(f"IP Loss: {game.ip_loss:.4f}")
 
             update_system_metrics()
 
