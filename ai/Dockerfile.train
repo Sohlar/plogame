@@ -1,4 +1,4 @@
-FROM pybase as builder
+FROM pybase AS builder
 
 COPY ./*.py /app/
 

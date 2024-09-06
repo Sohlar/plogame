@@ -34,8 +34,15 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
     game.ip_agent.model.to(device)
     game.ip_agent.target_model.to(device)
 
+    oop_cumulative_reward = 0
+    ip_cumulative_reward = 0
+
+
     for e in range(episodes):
-        game_state = game.play_hand()
+        game_state, oop_reward, ip_reward = game.play_hand()
+
+        oop_cumulative_reward += oop_reward
+        ip_cumulative_reward += ip_reward
 
         # Train every hand
         if train_oop and len(game.oop_agent.memory) > batch_size:
@@ -60,6 +67,16 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
                 game.oop_agent.update_target_model()
             if train_ip:
                 game.ip_agent.update_target_model()
+
+        # Update metrics
+        cumulative_reward.labels(player='oop').set(oop_cumulative_reward)
+        cumulative_reward.labels(player='ip').set(ip_cumulative_reward)
+        player_chips.labels(player='oop').set(game_state['oop_player']['chips'])
+        player_chips.labels(player='ip').set(game_state['ip_player']['chips'])
+        pot_size.set(game_state['pot'])
+        community_cards.set(len(game_state['community_cards']))
+
+
         # Progress Report
         if e % 100 == 0:
             logging.info(
@@ -81,7 +98,6 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         save_model(game.oop_agent, "oop")
     if train_ip:
         save_model(game.ip_agent, "ip")
-
 
 
 def main():

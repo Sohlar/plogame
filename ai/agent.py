@@ -113,7 +113,6 @@ class DQNAgent:
 
         q_value.labels(player='oop' if self.name == 'OOP' else 'ip').set(np.max(act_values.cpu().data.numpy()))
         epsilon.labels(player='oop' if self.name == 'OOP' else 'ip').set(self.epsilon)
-        action_taken.labels(player_action=f"{'oop' if self.name == 'OOP' else 'ip'}_{action_map[action]}").inc()
         # Exploitation: choose best action based on learned Q-values
         return np.argmax(act_values.cpu().data.numpy())
 
