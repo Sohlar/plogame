@@ -7,6 +7,8 @@ from logging_config import setup_logging
 import logging
 import torch.cuda
 import datetime
+from prometheus_client import start_http_server
+from metrics import loss as loss_metric, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
 
 setup_logging()
 
@@ -32,14 +34,32 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
     game.ip_agent.model.to(device)
     game.ip_agent.target_model.to(device)
 
+    oop_cumulative_reward = 0
+    ip_cumulative_reward = 0
+
+
     for e in range(episodes):
-        game_state = game.play_hand()
+        game_state, oop_reward, ip_reward = game.play_hand()
+
+        oop_cumulative_reward += oop_reward
+        ip_cumulative_reward += ip_reward
 
         # Train every hand
         if train_oop and len(game.oop_agent.memory) > batch_size:
             oop_loss = game.oop_agent.replay(batch_size)
+            if oop_loss is not None:
+                game.oop_loss = oop_loss
+                loss_metric.labels(player='oop').set(oop_loss)
+        else:
+            game.oop_loss = None
+
         if train_ip and len(game.ip_agent.memory) > batch_size:
             ip_loss = game.ip_agent.replay(batch_size)
+            if ip_loss is not None:
+                game.ip_loss = ip_loss
+                loss_metric.labels(player='ip').set(ip_loss)
+        else:
+            game.ip_loss = None
 
         # Update target models
         if e % 10 == 0:
@@ -47,15 +67,27 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
                 game.oop_agent.update_target_model()
             if train_ip:
                 game.ip_agent.update_target_model()
+
+        # Update metrics
+        cumulative_reward.labels(player='oop').set(oop_cumulative_reward)
+        cumulative_reward.labels(player='ip').set(ip_cumulative_reward)
+        player_chips.labels(player='oop').set(game_state['oop_player']['chips'])
+        player_chips.labels(player='ip').set(game_state['ip_player']['chips'])
+        pot_size.set(game_state['pot'])
+        community_cards.set(len(game_state['community_cards']))
+
+
         # Progress Report
         if e % 100 == 0:
             logging.info(
                 f"Episode: {e}/{episodes}"
             )
-            if train_oop and"oop_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
-            if train_ip and "ip_loss" in locals():
-                logging.info(f"OOP Loss: {oop_loss:.4f}")
+            if train_oop and game.oop_loss is not None:
+                logging.info(f"OOP Loss: {game.oop_loss:.4f}")
+            if train_ip and game.ip_loss is not None:
+                logging.info(f"IP Loss: {game.ip_loss:.4f}")
+
+            update_system_metrics()
 
     print("\nTraining Complete!")
     print("Final Chip Counts:")
@@ -66,7 +98,6 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         save_model(game.oop_agent, "oop")
     if train_ip:
         save_model(game.ip_agent, "ip")
-
 
 
 def main():
@@ -148,5 +179,6 @@ def save_model(agent, position):
     print(f"Saved {position} model: {filename}")
 
 if __name__ == "__main__":
+    start_http_server(8000)
     main()
 

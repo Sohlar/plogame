@@ -10,6 +10,9 @@ This is a project for a Pot Limit Omaha Trainer.
 
 ### Prerequisites
 
+- Docker and Docker Compose
+
+For local development without Docker:
 - Python 3.x
 
 ### Building the Trainer
@@ -17,18 +20,23 @@ This is a project for a Pot Limit Omaha Trainer.
 1. Clone the repository:
 
     `git clone https://github.com/yourusername/plo_project.git`
+
+    `cd plogame`
     
+
+1. Build and run the trainer:
+
     `cd plogame/scripts`
 
     `./build_base_image.sh`
 
-   `./build_trainer.sh`
+    `./build_trainer.sh`
 
-    `docker run -it -v ./models:/app/models plo_trainer /bin/bash`
+    `cd ../ai && ./start.sh`
+
+    `docker run -it -v ./models:/app/models --name plo_trainer --network plo_network -p 8000:8000 plo_trainer`
 
     `python3 ./train.py`
-
-
 
 ### Building/Running the Poker Game
 
@@ -44,14 +52,24 @@ You can sample the game from the command line interface using the following comm
 - `./game`: Frontend application for interacting with the poker game.
 - `scripts`: Scripts folder for building all the images/multiple stages of docker builds.
 
-## Sim logs
-`tail -f poker_game.log`
+## AI Component
+
+The AI component includes:
+- A command-line interface (CLI) game implementation
+- A Deep Q-Network (DQN) agent for AI decision-making
+- A training script for the AI
+- Metrics collection for monitoring AI performance and system resources
+
+### Training the AI
+Run the training script: `python train.py`
+
+## WIP
+- **Model Training**: Develop and train machine learning models to improve game strategies and player experience.
+- **Finish Communication Protocol**: Finalize the websocket protocol for real-time game updates and player interactions.
 
 ## TODO
 
-- **Finish Communication Protocol**: Finalize the communication protocol for real-time game updates and player interactions.
 - **Dynamic HTML Generation from WebSocket**: Implement dynamic HTML updates based on WebSocket messages to enhance the user experience.
-- **Model Training**: Develop and train machine learning models to improve game strategies and player experience.
 - **Automated Testing**: Implement comprehensive unit and integration tests to ensure code quality and reliability.
 - **Continuous Integration/Continuous Deployment (CI/CD)**: Set up CI/CD pipelines for automated testing and deployment.
 - **Scalability Improvements**: Optimize the application for scalability to handle a large number of concurrent users.
