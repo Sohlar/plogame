@@ -21,7 +21,7 @@ class DQN(nn.Module):
         # Three-layer network: complex enough to capture poker strategies, not too large to overfit
         self.fc1 = nn.Linear(state_size, 64)
         self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, action_size)
+        self.fc3 = nn.Linear(64, action_size + 1)
 
     def forward(self, x):
         """
@@ -67,6 +67,7 @@ class DQNAgent:
         self.model = DQN(state_size, action_size).to(self.device)  # Main network for action selection
         self.target_model = DQN(state_size, action_size).to(self.device)  # Target network for stable Q-learning
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)  # Adam optimizer works well for poker's noisy rewards
+        self.min_bet = 2
 
     def remember(self, state, action, reward, next_state, done):
         """
@@ -87,7 +88,7 @@ class DQNAgent:
 
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state):
+    def act(self, state, valid_actions, max_bet):
         """
         Choose an action using an epsilon-greedy policy.
 
@@ -97,24 +98,30 @@ class DQNAgent:
         Returns:
             int: The chosen action.
         """
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            q_values = self.model(state_tensor)
+
+        action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
+        valid_action_indices = [action_map[action] for action in valid_actions]
+
         if np.random.rand() <= self.epsilon:
             # Exploration: randomly try actions to discover new poker strategies
-            return random.randrange(self.action_size)
+            action = random.choice(valid_action_indices)
+        else:
+            valid_q_values = q_values[0, valid_action_indices]
+            action = valid_action_indices[valid_q_values.argmax().item()]
 
-        if not isinstance(state, torch.Tensor):
-            state = torch.FloatTensor(state)
-        state = state.to(self.device)
-        
-        if state.dim() == 1:
-            state = state.unsqueeze(0)
+        bet_size = None
+        if action == 3 and "bet" in valid_actions:
+            bet_size = min(q_values[0][4] * max_bet, max_bet)
 
-        with torch.no_grad():
-            act_values = self.model(state)
 
-        q_value.labels(player='oop' if self.name == 'OOP' else 'ip').set(np.max(act_values.cpu().data.numpy()))
+        max_q_values = q_values[0, valid_action_indices].max().item()
+        q_value.labels(player='oop' if self.name == 'OOP' else 'ip').set(max_q_values)
         epsilon.labels(player='oop' if self.name == 'OOP' else 'ip').set(self.epsilon)
         # Exploitation: choose best action based on learned Q-values
-        return np.argmax(act_values.cpu().data.numpy())
+        return action, bet_size
 
     def replay(self, batch_size):
         """
