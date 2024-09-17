@@ -11,7 +11,7 @@ from metrics import episode_reward, cumulative_reward, player_chips, pot_size, c
 CONST_100bb = 200
 CONST_200bb = 400
 CONST_300bb = 600
-
+MINIMUM_BET_INCREMENT = 2
 
 setup_logging()
 
@@ -469,11 +469,7 @@ class PokerGame:
             else:
                 bet_size = None
             print(f"Finished getting action: {action}")
-
-
-
-
-
+            print(f"Bet Size: {bet_size}")
 
             action_int = self.action_to_int(action)
 
@@ -537,6 +533,21 @@ class PokerGame:
 
     def calculate_max_preflop_bet_size(self):
         state = self.get_game_state()
+        pot = state['pot']
+        current_bet = state['current_bet']
+        player_chips = self.current_player.chips
+        player_committed = self.oop_committed if self.current_player == self.oop_player else self.ip_player
+
+        if current_bet == 0:
+            max_bet = pot
+        else:
+            call_amount = current_bet - player_committed
+            effective_pot = pot + current_bet + call_amount
+            max_raise = 3 * current_bet + pot - player_committed
+
+            max_bet = min(max_raise, player_chips)
+
+        max_bet (max_bet // MINIMUM_BET_INCREMENT) * MINIMUM_BET_INCREMENT
         max_bet = min(self.current_player.chips, 3 * state['current_bet'])
         return max_bet
 
@@ -668,7 +679,9 @@ class PokerGame:
             else:
                 ip_experiences.append((state_representation, action_int, valid_actions, bet_size, max_bet))
 
+            print(f"Before process_postflop_action, current player: {self.current_player.name}")
             self.process_postflop_action(action, bet_size)
+            print(f"After process_postflop_action, current player: {self.current_player.name}")
 
             if self.last_action == "call" and self.oop_committed == self.ip_committed:
                 game_state = self.get_game_state()
@@ -678,7 +691,12 @@ class PokerGame:
 
     def process_postflop_action(self, action, bet_size=None):
         logging.info(f"Processing Postflop Action: {action}")
-        if action not in self.get_valid_postflop_actions():
+        print(f"Action: {action}")
+        valid_action, max_bet = self.get_valid_postflop_actions()
+        print(f"Valid actions: {valid_action}")
+        print(f"Bet Size: {bet_size}")
+        if action not in valid_action:
+            print("ERROR: Invalid Action")
             return {"error": "Invalid Action"}
 
         if action == "check":
@@ -705,7 +723,7 @@ class PokerGame:
 
         return valid_actions, max_bet
 
-    def handle_postflop_bet(self):
+    def handle_postflop_bet(self, bet_size=MINIMUM_BET_INCREMENT):
         logging.info(f"Handling postflop bet for {self.current_player.name}")
         is_allin, bet_amount = self.calculate_postflop_bet_size(bet_size)
         if not is_allin:
@@ -798,5 +816,5 @@ class PokerGame:
 
     def switch_players(self):
         self.current_player = (
-            self.oop_player if self.current_player == self.ip_player else self.ip_player
+            self.oop_player if self.current_player.name == self.ip_player.name else self.ip_player
         )
