@@ -91,7 +91,7 @@ class DQNAgent:
 
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state, valid_actions, max_bet):
+    def act(self, state, valid_actions, max_bet, min_bet):
         """
         Choose an action using an epsilon-greedy policy.
 
@@ -118,7 +118,7 @@ class DQNAgent:
         bet_size = None
         if action == 3 and "bet" in valid_actions:
             bet_fraction = q_values[0, -1].item()
-            bet_size = max(self.min_bet, min(self.min_bet + bet_fraction * (max_bet - self.min_bet), max_bet))
+            bet_size = max(min_bet, min(min_bet + bet_fraction * (max_bet - min_bet), max_bet))
             ##print(f"DQN bet_size: {bet_size}")
             bet_size = round(bet_size, 0)
 

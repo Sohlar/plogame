@@ -35,7 +35,7 @@ Follow the prompts to:
 
 Run the training script and choose the 'play' option:
     ```
-    python train.py
+    python3 train.py --hands 100 --mode train --train_oop --train_ip
     ```
 Follow the prompts to:
 - Choose your position (OOP or IP)

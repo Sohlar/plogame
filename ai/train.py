@@ -1,4 +1,6 @@
 import torch
+import argparse
+import sys
 import os
 from ai_trainer import PokerGame, HumanPlayer
 from agent import DQNAgent
@@ -100,13 +102,13 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         save_model(game.ip_agent, "ip")
 
 
-def main():
+def main(args):
 
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
 
-    mode = input("Enter 'play' to play against AI, or 'train' to train a new model: ")
+    mode = args.mode
 
     if mode == 'play':
         position = input("Enter 'oop' or 'ip': ")
@@ -126,10 +128,9 @@ def main():
 
         play_against_ai(game)
     else:
-        episode_choice = int(input("\nEnter # of hands to train: "))
-        train_oop = input("Train OOP model? (y/n): ").lower() == 'y'
-        train_ip = input("Train IP model? (y/n): ").lower() == 'y'
-
+        episode_choice = args.hands
+        train_oop = args.train_oop
+        train_ip = args.train_ip
         oop_agent = None
         ip_agent = None
 
@@ -180,5 +181,15 @@ def save_model(agent, position):
 
 if __name__ == "__main__":
     start_http_server(8000)
-    main()
+    parser = argparse.ArgumentParser(description="PLO model DQN")
+    parser.add_argument("--mode", type=str, choices=['train', 'play'], required=True, help="'Play' or 'Train'")
+    parser.add_argument("--hands", type=int, required=True, help="Number of hands to train on")
+    parser.add_argument("--train_ip", action="store_true", help="Train an IP model")
+    parser.add_argument("--train_oop", action="store_true", help="Train an OOP model")
+
+    args = parser.parse_args()
+     
+    if args.mode == 'train' and args.hands is None:
+        parser.error("--hands is required in training mode.")
+    main(args)
 
