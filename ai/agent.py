@@ -21,7 +21,8 @@ class DQN(nn.Module):
         # Three-layer network: complex enough to capture poker strategies, not too large to overfit
         self.fc1 = nn.Linear(state_size, 64)
         self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, action_size + 1)
+        self.fc3 = nn.Linear(64, action_size)
+        self.fc_bet = nn.Linear(64, 1)
 
     def forward(self, x):
         """
@@ -36,8 +37,10 @@ class DQN(nn.Module):
         # ReLU activations allow the network to learn non-linear poker strategies
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
-        # No activation on output layer to allow for positive and negative Q-values
-        return self.fc3(x)
+        actions = self.fc3(x)
+        bet_size = torch.sigmoid(self.fc_bet(x))
+        return torch.cat([actions, bet_size], dim=-1)
+
 
 
 # fmt: off
@@ -51,8 +54,8 @@ class DQNAgent:
             action_size (int): The number of possible actions.
         """
         if torch.cuda.is_available():
-            print("Cuda is Available. GPU will be used")
-            print(f"GPU name: {torch.cuda.get_device_name(0)}")
+            ##print("Cuda is Available. GPU will be used")
+            ##print(f"GPU name: {torch.cuda.get_device_name(0)}")
             device = torch.device("cuda")
         self.name = None
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
@@ -114,13 +117,17 @@ class DQNAgent:
 
         bet_size = None
         if action == 3 and "bet" in valid_actions:
-            bet_size = min(q_values[0][4] * max_bet, max_bet)
+            bet_fraction = q_values[0, -1].item()
+            bet_size = max(self.min_bet, min(self.min_bet + bet_fraction * (max_bet - self.min_bet), max_bet))
+            ##print(f"DQN bet_size: {bet_size}")
+            bet_size = round(bet_size, 0)
 
 
         max_q_values = q_values[0, valid_action_indices].max().item()
         q_value.labels(player='oop' if self.name == 'OOP' else 'ip').set(max_q_values)
         epsilon.labels(player='oop' if self.name == 'OOP' else 'ip').set(self.epsilon)
         # Exploitation: choose best action based on learned Q-values
+        ##print(f"ABOUT TO RETURN BET SIZE: {bet_size}")
         return action, bet_size
 
     def replay(self, batch_size):
@@ -145,12 +152,18 @@ class DQNAgent:
         dones = torch.FloatTensor(dones).to(self.device)
 
         # Compute current Q-values and target Q-values
-        current_q = self.model(states).gather(1, actions.unsqueeze(1))
-        max_next_q = self.target_model(next_states).detach().max(1)[0]
-        target_q = rewards + (self.gamma * max_next_q * (1 - dones))
+        current_q = self.model(states)
+        next_q = self.target_model(next_states).detach()
+        target_q = current_q.clone()
+
+        for i in range(batch_size):
+            if actions[i] == 3:
+                target_q[i, -1] == rewards[i]
+            else:
+                target_q[i, actions[i]] = rewards[i] + self.gamma * next_q[i].max() * (1- dones[i])
 
         # MSE loss helps the model learn to accurately predict action values in poker
-        loss = nn.MSELoss()(current_q.squeeze(), target_q)
+        loss = nn.MSELoss()(current_q, target_q)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
