@@ -208,7 +208,7 @@ class PokerGame:
         ip_experiences.extend(round_experiences[1])
 
         if not game_state["hand_over"]:
-            print("\nDEALING FLOP")
+            print("\nDEALING FLOP\n")
             game_state, round_experiences = self.deal_flop()
             oop_experiences.extend(round_experiences[0])
             ip_experiences.extend(round_experiences[1])
@@ -219,7 +219,7 @@ class PokerGame:
                 game_state["hand_over"] = True
 
             if not game_state["hand_over"]:
-                print("\nDEALING TURN")
+                print("\nDEALING TURN\n")
                 game_state, round_experiences = self.deal_turn()
                 oop_experiences.extend(round_experiences[0])
                 ip_experiences.extend(round_experiences[1])
@@ -230,7 +230,7 @@ class PokerGame:
                     game_state["hand_over"] = True
 
                 if not game_state["hand_over"]:
-                    print("\nDEALING RIVER")
+                    print("\nDEALING RIVER\n")
                     game_state, round_experiences = self.deal_river()
                     oop_experiences.extend(round_experiences[0])
                     ip_experiences.extend(round_experiences[1])
@@ -273,7 +273,7 @@ class PokerGame:
     def determine_showdown_winner(self):
         logging.info("Determining Showdown Winner")
         print(f"\nIP Tables: {self.ip_player.hand}")
-        print(f"\nOOP Tables: {self.oop_player.hand}")
+        print(f"\nOOP Tables: {self.oop_player.hand}\n")
         updated_state = self.get_game_state()
         # fmt: off
         ip_rank = evaluate_omaha_cards(
@@ -461,8 +461,8 @@ class PokerGame:
                 game_state["message"] = "Preflop betting complete"
                 return game_state, (oop_experiences, ip_experiences)
 
-            print(f"All players acted: {all_players_acted}")
-            print(f"All bets settled: {all_bets_settled}")
+            #print(f"All players acted: {all_players_acted}")
+            #print(f"All bets settled: {all_bets_settled}")
 
             logging.info(f"Current State: {game_state}")
             # print(f"\nCommunity Cards: {game_state['community_cards']}")
@@ -513,23 +513,17 @@ class PokerGame:
         if action == "bet":
             print("Handling Bet")
             self.handle_preflop_bet(bet_size)
-            print("Handling Bet")
         if action == "call":
             print("Handling Call")
             self.handle_preflop_call()
-            print("Handling Call")
         if action == "check":
-            print("Handling Check")
             self.handle_preflop_check()
             print("Handling Check")
         if action == "fold":
             print("handling Fold")
             self.handle_fold()
-            print("handling Fold")
 
-        print(f"Current player: {self.current_player}")
         self.switch_players()
-        print(f"Current player: {self.current_player}")
 
     def get_valid_preflop_actions(self):
         # fmt: off
@@ -685,7 +679,6 @@ class PokerGame:
 
             logging.info(f"Current State: {state}")
             # print(f"\nCommunity Cards: {state['community_cards']}")
-            print(f"Pot: {state['pot']}")
             # print(f"Your Hand: {self.get_player_hand()}")
             # print( f"IP Chips: {state[self.ip_player.name.lower() + '_player']['chips']}")
             # print( f"OOP Chips: {state[self.oop_player.name.lower() + '_player']['chips']}")
