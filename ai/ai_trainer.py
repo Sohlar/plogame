@@ -209,7 +209,7 @@ class PokerGame:
         ip_experiences.extend(round_experiences[1])
 
         if not game_state["hand_over"]:
-            print("\nDEALING FLOP\n")
+            #print("\nDEALING FLOP\n")
             game_state, round_experiences = self.deal_flop()
             oop_experiences.extend(round_experiences[0])
             ip_experiences.extend(round_experiences[1])
@@ -220,7 +220,7 @@ class PokerGame:
                 game_state["hand_over"] = True
 
             if not game_state["hand_over"]:
-                print("\nDEALING TURN\n")
+                #print("\nDEALING TURN\n")
                 game_state, round_experiences = self.deal_turn()
                 oop_experiences.extend(round_experiences[0])
                 ip_experiences.extend(round_experiences[1])
@@ -231,7 +231,7 @@ class PokerGame:
                     game_state["hand_over"] = True
 
                 if not game_state["hand_over"]:
-                    print("\nDEALING RIVER\n")
+                    #print("\nDEALING RIVER\n")
                     game_state, round_experiences = self.deal_river()
                     oop_experiences.extend(round_experiences[0])
                     ip_experiences.extend(round_experiences[1])
@@ -273,8 +273,8 @@ class PokerGame:
 
     def determine_showdown_winner(self):
         logging.info("Determining Showdown Winner")
-        print(f"\nIP Tables: {self.ip_player.hand}")
-        print(f"\nOOP Tables: {self.oop_player.hand}\n")
+        #print(f"\nIP Tables: {self.ip_player.hand}")
+        #print(f"\nOOP Tables: {self.oop_player.hand}\n")
         updated_state = self.get_game_state()
         # fmt: off
         ip_rank = evaluate_omaha_cards(
@@ -288,7 +288,7 @@ class PokerGame:
         # fmt: on
 
         if ip_rank < oop_rank:
-            print(f"{updated_state['ip_player']['name']} wins {self.pot}")
+            # print(f"{updated_state['ip_player']['name']} wins {self.pot}")
             # print(f"{self.ip_player.hand}")
             updated_state["ip_player"]["chips"] += self.pot
         elif oop_rank < ip_rank:
@@ -422,7 +422,7 @@ class PokerGame:
 
             q_value.labels(player).set(np.max(agent.model(state.to(agent.device)).cpu().data.numpy()))
             epsilon.labels(player).set(agent.epsilon)
-            print(f"Player: {player}\nAction: {chosen_action}")
+            # print(f"Player: {player}\nAction: {chosen_action}")
             action_taken.labels(player_action=f"{player}_{chosen_action}").inc()
 
         if chosen_action == "bet":
@@ -513,16 +513,16 @@ class PokerGame:
         # print(f"Processing action: {action}")
 
         if action == "bet":
-            print("Handling Bet")
+            #print("Handling Bet")
             self.handle_preflop_bet(bet_size)
         if action == "call":
-            print("Handling Call")
+            #print("Handling Call")
             self.handle_preflop_call()
         if action == "check":
             self.handle_preflop_check()
-            print("Handling Check")
+            #print("Handling Check")
         if action == "fold":
-            print("handling Fold")
+            #print("handling Fold")
             self.handle_fold()
 
         self.switch_players()
@@ -714,7 +714,7 @@ class PokerGame:
 
             valid_actions, max_bet, min_bet = self.get_valid_postflop_actions()
             # print(f"Finished getting valid actions: {valid_actions}")
-            print(f"MAX BET: {max_bet}")
+            #print(f"MAX BET: {max_bet}")
             action = self.get_player_action(valid_actions, max_bet, min_bet)
 
             if isinstance(action, tuple):
@@ -747,7 +747,7 @@ class PokerGame:
 
     def process_postflop_action(self, action, bet_size=None):
         logging.info(f"Processing Postflop Action: {action}")
-        print(f"Bet Size: {bet_size}")
+        # print(f"Bet Size: {bet_size}")
 
         if action == "check":
             self.handle_postflop_check()
