@@ -24,17 +24,15 @@ For local development without Docker:
     `cd plogame`
     
 
-1. Build and run the trainer:
+2. Build and run the trainer:
 
     `cd plogame/scripts`
 
     `./build_base_image.sh`
 
-    `./build_trainer.sh`
-
     `cd ../ai && ./start.sh`
 
-    `docker run -it -v ./models:/app/models --name plo_trainer --network plo_network -p 8000:8000 plo_trainer`
+    `docker run -it --gpus all -v ./models:/app/models --name plo_trainer --network plo_network -p 8000:8000 plo_trainer`
 
     `python3 ./train.py`
 

@@ -1,80 +1,45 @@
 # PLO AI Training and CLI Game
 
-This project contains the AI components for a Pot Limit Omaha (PLO) poker trainer, including a command-line interface (CLI) game, a Deep Q-Network (DQN) agent, a training script, and metrics collection.
+This project contains the AI components for a Pot Limit Omaha (PLO) poker trainer, a Deep Q-Network (DQN) agent, a training script, and metrics collection.
+
+# Build and run the trainer:
+
+    `cd plogame/scripts`
+
+    `./build_base_image.sh`
+
+    `cd ../ai && ./start.sh`
+
+    `docker run -it --gpus all -v ./models:/app/models --name plo_trainer --network plo_network -p 8000:8000 plo_trainer`
+
+    `python3 ./train.py`
+
+## CUDA Support
+
+This project supports CUDA for GPU acceleration. To use CUDA:
+
+1. Ensure you have NVIDIA GPU drivers installed on your host machine.
+2. Install CUDA on your host system. The version used in this project is 12.1.
+3. Install the NVIDIA Container Toolkit:
+   ```
+   distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+   curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+   curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+   sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
+   sudo systemctl restart docker
+   ```
+4. Use the `--gpus all` flag when running the Docker container to enable GPU support.
+
+Note: Make sure your NVIDIA drivers and CUDA version on the host system are compatible with CUDA 12.1 used in the Docker container.
 
 ## Files
 
-1. cli_game.py: Implements the PLO game logic and CLI interface.
-2. agent.py: Defines the DQN agent for AI decision-making.
-3. train.py: Provides functionality to train the AI and play against it.
-4. metrics.py: Sets up metrics collection for monitoring AI performance and system resources.
-
-## Setup
-
-1. Ensure you have Python 3.x installed.
-2. Install the required dependencies:
-    ```
-   pip install torch numpy psutil prometheus_client
-    ```
-
-## Usage
-
-### Training the AI
-
-Run the training script:
-    ```
-    python train.py
-    ```
-
-Follow the prompts to:
-- Choose the number of hands to train
-- Decide whether to train the OOP (out of position) model, IP (in position) model, or both
-- Select existing models for positions you're not training
-
-### Playing Against the AI
-
-Run the training script and choose the 'play' option:
-    ```
-    python3 train.py --hands 100 --mode train --train_oop --train_ip
-    ```
-Follow the prompts to:
-- Choose your position (OOP or IP)
-- Select an AI model to play against
-
-## Key Components
-
-### PokerGame (cli_game.py)
-
-- Implements the core game logic for PLO
-- Handles betting rounds, card dealing, and determining winners
-- Provides both AI and human player interfaces
-
-### DQNAgent (agent.py)
-
-- Implements a Deep Q-Network for AI decision making
-- Uses experience replay and target networks for stable learning
-- Supports both CPU and GPU training
-
-### Training (train.py)
-
-- Allows training of AI models for both OOP and IP positions
-- Supports playing against trained AI models
-- Handles model saving and loading
-
-### Metrics (metrics.py)
-
-- Sets up Prometheus metrics for monitoring:
-  - AI performance (rewards, Q-values, loss)
-  - Game state (pot size, player chips)
-  - System resources (CPU, memory, GPU usage)
-  - Training progress
+1. agent.py: Defines the DQN agent for AI decision-making.
+2. train.py: Provides functionality to train the AI and play against it.
+3. metrics.py: Sets up metrics collection for monitoring AI performance and system resources.
 
 ## Customization
 
 - Adjust hyperparameters in agent.py to optimize AI performance
 - Modify the network architecture in the DQN class for different model complexities
 - Add or remove metrics in metrics.py as needed for your monitoring setup
-
-## Note
-
-This project is designed for educational and research purposes. It demonstrates the application of reinforcement learning to poker strategy but may not be suitable for production use without further refinement and testing.
