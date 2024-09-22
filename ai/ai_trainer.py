@@ -17,6 +17,7 @@ from metrics import (
     q_value,
     epsilon,
     loss,
+    bet_size_metric,
     update_bet_size,
 )
 
@@ -403,7 +404,6 @@ class PokerGame:
 
     def get_player_action(self, valid_actions, max_bet, min_bet):
         logging.info(f"Getting {self.current_player.name}'s Action: ({valid_actions})")
-        # print(f"GPA max_bet: {max_bet}")
         if isinstance(self.current_player, HumanPlayer):
             return self.current_player.get_action(valid_actions, max_bet)
         else:
@@ -426,6 +426,8 @@ class PokerGame:
             action_taken.labels(player_action=f"{player}_{chosen_action}").inc()
 
         if chosen_action == "bet":
+            logging.info(f"Bet size: {bet_size}")
+            logging.info(f"Bet Max: {max_bet}")
             return chosen_action, min(bet_size, max_bet)
         return chosen_action
 
@@ -580,14 +582,24 @@ class PokerGame:
             else self.ip_committed
         )
 
+        opponent_committed = (
+            self.oop_committed
+            if self.current_player == self.ip_player
+            else self.ip_committed
+        )
+
         # print(f"{type(current_bet)}\n{type(pot)}\n{type(player_committed)}")
+        to_call = opponent_committed - player_committed
+
 
         if current_bet == 0:
-            return pot
+            max_bet = min(pot, player_chips)
         else:
-            max_raise = 3 * current_bet + pot - player_committed
+            max_raise = 3 * current_bet + pot - (player_committed + opponent_committed)
+            max_bet = min(max_raise, player_chips)
 
-            return min(max_raise, player_chips)
+        #Could include the min bet to be set here as well
+        return min(max_bet, player_chips)
 
     def handle_preflop_bet(self, bet_size=None):
         logging.info(f"Handling preflop bet for {self.current_player.name}")
@@ -673,6 +685,9 @@ class PokerGame:
 
         oop_experiences = []
         ip_experiences = []
+        oop_committed = 0
+        ip_committed = 0
+
         while True:
             state = self.get_game_state()
             state_representation = self.get_state_representation()
@@ -770,12 +785,14 @@ class PokerGame:
             self.pot += bet_size
             self.ip_committed += bet_size
             self.current_bet = bet_size
+            bet_size_metric.labels(player="ip", street="postflop").observe(bet_size)
             update_bet_size("ip", bet_size, self.pot)
         else:
             self.current_player.chips -= bet_size
             self.pot += bet_size
             self.oop_committed += bet_size
             self.current_bet = bet_size
+            bet_size_metric.labels(player="oop", street="postflop").observe(bet_size)
             update_bet_size("oop", bet_size, self.pot)
 
     def handle_postflop_call(self):

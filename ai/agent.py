@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.cuda
 import random
 from collections import deque
-from metrics import q_value, epsilon, action_taken
+from metrics import q_value, epsilon, action_taken, bet_size_metric
 
 
 class DQN(nn.Module):
@@ -121,6 +121,7 @@ class DQNAgent:
             bet_size = max(min_bet, min(min_bet + bet_fraction * (max_bet - min_bet), max_bet))
             ##print(f"DQN bet_size: {bet_size}")
             bet_size = round(bet_size, 0)
+            bet_size_metric.labels(player='oop' if self.name == 'OOP' else 'ip', street="agent_decision").observe(bet_size)  # Add this line
 
 
         max_q_values = q_values[0, valid_action_indices].max().item()
@@ -158,7 +159,7 @@ class DQNAgent:
 
         for i in range(batch_size):
             if actions[i] == 3:
-                target_q[i, -1] == rewards[i]
+                target_q[i, -1] = rewards[i]
             else:
                 target_q[i, actions[i]] = rewards[i] + self.gamma * next_q[i].max() * (1- dones[i])
 

@@ -16,6 +16,8 @@ community_cards = Gauge('community_cards', 'Number of community cards')
 # Action Metrics
 action_taken = Counter('action_taken', 'Number of times each action was taken', ['player_action'])
 bet_size_pct = Histogram('bet_size_pct', 'Bet sizes as percentage of pot', ['player'], buckets=(10, 20, 30, 40, 50, 60, 70, 80, 90, 100))
+bet_size_metric = Histogram('bet_size', 'Bet sizes in chips', ['player', 'street'], buckets=(2, 5, 10, 20, 50, 100, 200, 500, 1000))
+
 
 # System Resource Metrics
 cpu_usage = Gauge('cpu_usage', 'Current CPU usage percentage')
