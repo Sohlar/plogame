@@ -36,6 +36,9 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
     game.ip_agent.model.to(device)
     game.ip_agent.target_model.to(device)
 
+    game.oop_agent.device = device
+    game.ip_agent.device = device
+
     oop_cumulative_reward = 0
     ip_cumulative_reward = 0
 
@@ -92,9 +95,6 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
             update_system_metrics()
 
     print("\nTraining Complete!")
-    print("Final Chip Counts:")
-    print(f"OOP Player chips: {game.oop_player.chips}")
-    print(f"IP Player chips: {game.ip_player.chips}")
 
     if train_oop:
         save_model(game.oop_agent, "oop")
@@ -157,7 +157,7 @@ def main(args):
         start_time = time.time()
         game = PokerGame()
         num_episodes = episode_choice
-        batch_size = 32
+        batch_size = 128
         train_dqn_poker(game, num_episodes, batch_size)
         end_time = time.time()
         print(f"Total Time: {end_time - start_time:.2f} seconds")

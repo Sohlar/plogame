@@ -19,10 +19,10 @@ class DQN(nn.Module):
         """
         super(DQN, self).__init__()
         # Three-layer network: complex enough to capture poker strategies, not too large to overfit
-        self.fc1 = nn.Linear(state_size, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc3 = nn.Linear(64, action_size)
-        self.fc_bet = nn.Linear(64, 1)
+        self.fc1 = nn.Linear(state_size, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, action_size)
+        self.fc_bet = nn.Linear(256, 1)
 
     def forward(self, x):
         """
@@ -53,13 +53,10 @@ class DQNAgent:
             state_size (int): The size of the state space.
             action_size (int): The number of possible actions.
         """
-        if torch.cuda.is_available():
-            ##print("Cuda is Available. GPU will be used")
-            ##print(f"GPU name: {torch.cuda.get_device_name(0)}")
-            device = torch.device("cuda")
         self.name = None
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
         self.action_size = action_size  # Number of possible actions (fold, call, raise)
+        self.batch_size = 128
         self.memory = deque(maxlen=10000)  # Experience replay buffer, crucial for stable learning in poker
         self.gamma = 0.95    # Discount rate for future rewards, important for long-term strategy
         self.epsilon = 1.0   # Start with 100% exploration to learn diverse poker situations
@@ -84,10 +81,11 @@ class DQNAgent:
             done: Whether the episode has ended.
         """
         # Store experiences to learn from diverse poker situations
-        if not isinstance(state, torch.Tensor):
-            state = torch.FloatTensor(state).to(self.device)
-        if not isinstance(next_state, torch.Tensor):
-            next_state = torch.FloatTensor(next_state).to(self.device)
+        state = torch.FloatTensor(state).to(self.device) if not isinstance(state, torch.Tensor) else state.to(self.device)
+        next_state = torch.FloatTensor(next_state).to(self.device) if not isinstance(next_state, torch.Tensor) else next_state.to(self.device)
+        action = torch.LongTensor([action]).to(self.device)
+        reward = torch.FloatTensor([reward]).to(self.device)
+        done = torch.FloatTensor([done]).to(self.device)
 
         self.memory.append((state, action, reward, next_state, done))
 
@@ -143,18 +141,18 @@ class DQNAgent:
             batch_size (int): The number of samples to use for training.
         """
 
-        if len(self.memory) < batch_size:
+        if len(self.memory) < self.batch_size:
             return
 
-        minibatch = random.sample(self.memory, batch_size)  # Random sampling breaks correlation between consecutive hands
+        minibatch = random.sample(self.memory, self.batch_size)  # Random sampling breaks correlation between consecutive hands
         states, actions, rewards, next_states, dones = zip(*minibatch)
 
         # Convert to tensors for batch processing
-        states = torch.stack(states).to(self.device)
-        actions = torch.LongTensor(actions).to(self.device)
-        rewards = torch.FloatTensor(rewards).to(self.device)
-        next_states = torch.stack(next_states).to(self.device)
-        dones = torch.FloatTensor(dones).to(self.device)
+        states = torch.stack(states)
+        actions = torch.cat(actions)
+        rewards = torch.cat(rewards)
+        next_states = torch.stack(next_states)
+        dones = torch.cat(dones)
 
         # Compute current Q-values and target Q-values
         current_q = self.model(states)
