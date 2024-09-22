@@ -107,7 +107,11 @@ class DQNAgent:
 
         action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
         valid_action_indices = [action_map[action] for action in valid_actions]
-
+        
+        if not isinstance(state, torch.Tensor):
+            state = torch.FloatTensor(state).to(self.device)
+        elif state.device != self.device:
+            state = state.to(self.device)
         if np.random.rand() <= self.epsilon:
             # Exploration: randomly try actions to discover new poker strategies
             action = random.choice(valid_action_indices)

@@ -420,7 +420,7 @@ class PokerGame:
             action_map = {0: "fold", 1: "check", 2: "call", 3: "bet"}
             chosen_action = action_map[action]
 
-            q_value.labels(player).set(np.max(agent.model(state).cpu().data.numpy()))
+            q_value.labels(player).set(np.max(agent.model(state.to(agent.device)).cpu().data.numpy()))
             epsilon.labels(player).set(agent.epsilon)
             print(f"Player: {player}\nAction: {chosen_action}")
             action_taken.labels(player_action=f"{player}_{chosen_action}").inc()
