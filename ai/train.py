@@ -10,7 +10,7 @@ import logging
 import torch.cuda
 import datetime
 from prometheus_client import start_http_server
-from metrics import loss as loss_metric, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
+from metrics import loss as loss_metric, winrate, episode_reward, cumulative_reward, player_chips, pot_size, community_cards, episodes_completed, action_taken, q_value, epsilon, update_system_metrics
 
 setup_logging()
 
@@ -84,6 +84,11 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
 
         # Progress Report
         if e % 100 == 0:
+
+            oop_winrate = oop_cumulative_reward/(e/100)
+            ip_winrate = ip_cumulative_reward/(e/100)
+            winrate.labels(player='oop').set(oop_winrate)
+            winrate.labels(player='ip').set(ip_winrate)
             logging.info(
                 f"Episode: {e}/{episodes}"
             )

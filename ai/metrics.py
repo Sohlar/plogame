@@ -7,6 +7,7 @@ cumulative_reward = Gauge('cumulative_reward', 'Total reward across all episodes
 q_value = Gauge('q_value', 'Current Q-value', ['player'])
 loss = Gauge('loss', 'Current loss value', ['player'])
 epsilon = Gauge('epsilon', 'Current epsilon value', ['player'])
+winrate = Gauge('bb/100', 'Current BB/100', ['player'])
 
 # Game State Metrics
 pot_size = Gauge('pot_size', 'Current pot size')
