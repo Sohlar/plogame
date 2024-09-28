@@ -7,5 +7,4 @@ COPY ./Backend/* /app/
 
 WORKDIR /app
 
-RUN mkdir models
-RUN mkdir logs
+RUN mkdir -p models logs
