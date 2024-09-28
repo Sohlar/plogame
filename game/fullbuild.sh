@@ -1,5 +1,6 @@
 #!/bin/bash
-cd ./pybase_image
-docker build -t pybase . -f ./Backend/Dockerfile --no-cache
-cd ../
+cd ../scripts
+./build_base_image.sh
+
+cd ../game
 docker build -t plo . -f Dockerfile --no-cache
