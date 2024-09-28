@@ -58,6 +58,9 @@ class HumanPlayer(Player):
         while True:
             action = input(f"Choose an action {valid_actions}: ")
             if action in valid_actions:
+                if action == "bet":
+                    bet_size = int(input("Enter the bet size: "))
+                    return action, bet_size
                 return action
             # print("Invalid action. Please try again.")
 
@@ -568,7 +571,7 @@ class PokerGame:
         max_bet = min(self.current_player.chips, 3 * state["current_bet"])
         return max_bet
 
-    def calculate_max_postflop_bet_size(self):
+    def calculate_max_postflop_bet_size(self, initial_pot):
         max_bet = 0
         state = self.get_game_state()
         pot = state["pot"]
@@ -593,9 +596,9 @@ class PokerGame:
 
 
         if current_bet == 0:
-            max_bet = min(pot, player_chips)
+            max_bet = min(initial_pot, player_chips)
         else:
-            max_raise = 3 * current_bet + pot - (player_committed + opponent_committed)
+            max_raise = 3 * current_bet + initial_pot
             max_bet = min(max_raise, player_chips)
 
         #Could include the min bet to be set here as well
@@ -673,15 +676,11 @@ class PokerGame:
 
     def postflop_betting(self, street):
         logging.info("Starting Postflop Betting")
-        # self.num_active_players = len(
-        # [p for p in [self.oop_player, self.ip_player] if p.chips > 0]
-        # )
-        # self.ip_committed = 0
-        # self.oop_committed = 0
+        state = self.get_game_state()
+        initial_pot = state["pot"]
         self.current_bet = 0
         self.num_actions = 0
         self.current_player = self.oop_player
-        # self.hand_over = False
 
         oop_experiences = []
         ip_experiences = []
@@ -712,7 +711,8 @@ class PokerGame:
                 game_state["message"] = f"{street.capitalize()} betting complete"
                 return game_state, (oop_experiences, ip_experiences)
 
-            valid_actions, max_bet, min_bet = self.get_valid_postflop_actions()
+            valid_actions, min_bet = self.get_valid_postflop_actions()
+            max_bet = self.calculate_max_postflop_bet_size(initial_pot)
             # print(f"Finished getting valid actions: {valid_actions}")
             #print(f"MAX BET: {max_bet}")
             action = self.get_player_action(valid_actions, max_bet, min_bet)
@@ -762,7 +762,6 @@ class PokerGame:
 
     def get_valid_postflop_actions(self):
         valid_actions = []
-        max_bet = self.calculate_max_postflop_bet_size()
         min_bet = max(MINIMUM_BET_INCREMENT, min(self.current_bet * 2, self.current_player.chips))
         # print(f"GET VALID POSTFLOP ACTIONS max_bet {max_bet}")
 
@@ -773,7 +772,7 @@ class PokerGame:
         else:
             valid_actions = ["call", "bet", "fold"]
 
-        return valid_actions, max_bet, min_bet
+        return valid_actions, min_bet
 
     def handle_postflop_bet(self, bet_size=MINIMUM_BET_INCREMENT):
         logging.info(
