@@ -44,6 +44,20 @@ You can sample the game from the command line interface using the following comm
 
 `docker run -it -v ./models:/app/models plo /bin/bash`
 
+### Building/Running the Poker Game for Development work
+
+You can sample the game from the command line interface using the following command:
+
+`./build_game.sh`
+
+`docker run -it -v ./models:/app/models -v ./game/Backend:/app plo /bin/bash`
+
+If you have docker-compose-v2 on your linux machine this is setup to bind the volumes for you
+
+`docker compose up -d`
+
+`docker exec -it plo /bin/bash`
+
 ## Project Structure
 
 - `./ai`: Command line interface for sampling the Poker game and training the models.
