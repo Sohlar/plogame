@@ -42,7 +42,9 @@ You can sample the game from the command line interface using the following comm
 
 `./build_game.sh`
 
-`docker run -it -v ./models:/app/models plo /bin/bash`
+if you just want to run the game
+
+`docker run -it -v ./models:/app/models plo python3 game_logic.py`
 
 ### Building/Running the Poker Game for Development work
 
@@ -50,15 +52,15 @@ You can sample the game from the command line interface using the following comm
 
 `./build_game.sh`
 
-`docker run -it -v ./models:/app/models -v ./game/Backend:/app plo /bin/bash`
+`docker run -it -v ./models:/app/models -v ./game/Backend:/app plo python3 game_logic.py`
 
 If you have docker-compose-v2 on your linux machine this is setup to bind the volumes for you
 
 `docker compose up -d`
 
-`docker exec -it plo /bin/bash`
+`docker exec -it plo python3 game_logic.py`
 
-If you make changes to the python files you will need to reboot the container to see it
+If you make changes to the python files you may need to reboot the container to see it
 
 `docker restart plo`
 
