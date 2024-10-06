@@ -8,14 +8,6 @@ This is a project for a Pot Limit Omaha Trainer.
 
 ## Quick Start
 
-### Overview
-
-![overview](https://media.wrigglyt.xyz/images/OverallServiceFlow.png)
-
-![frontend](https://media.wrigglyt.xyz/images/FrontEnd.png)
-
-![backend](https://media.wrigglyt.xyz/images/Backend.png)
-
 ### Prerequisites
 
 - Docker and Docker Compose
@@ -69,6 +61,15 @@ If you have docker-compose-v2 on your linux machine this is setup to bind the vo
 If you make changes to the python files you will need to reboot the container to see it
 
 `docker restart plo`
+
+### Service Design Overview
+
+![overview](https://media.wrigglyt.xyz/images/OverallServiceFlow.png)
+
+![frontend](https://media.wrigglyt.xyz/images/FrontEnd.png)
+
+![backend](https://media.wrigglyt.xyz/images/Backend.png)
+
 
 ## Project Structure
 
