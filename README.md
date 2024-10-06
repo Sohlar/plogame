@@ -58,6 +58,10 @@ If you have docker-compose-v2 on your linux machine this is setup to bind the vo
 
 `docker exec -it plo /bin/bash`
 
+If you make changes to the python files you will need to reboot the container to see it
+
+`docker restart plo`
+
 ## Project Structure
 
 - `./ai`: Command line interface for sampling the Poker game and training the models.
