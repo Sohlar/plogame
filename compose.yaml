@@ -4,9 +4,11 @@ version: '3.9'
 services:
 
   plo:
+    container_name: plo
     image: plo
     volumes:
       - ./models:/app/models
+      - ./game/Backend:/app/
       - ./logs:/app/logs
     ports:
       - 8765:8765

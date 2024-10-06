@@ -8,3 +8,4 @@ COPY ./Backend/* /app/
 WORKDIR /app
 
 RUN mkdir -p models logs
+ENTRYPOINT sleep infinity
