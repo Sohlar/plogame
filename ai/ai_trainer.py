@@ -125,7 +125,19 @@ class PokerGame:
 
         logging.info("PokerGame initialized")
 
-    def get_state_representation(self, state=None):
+    def calculate_state_size(self):
+        num_float_values = 7 #pot, current_bet, length of community_cards == street, chips * 2, and committed * 2
+        num_community_cards = 5
+        num_hand_cards = 4
+        num_players = 2
+        card_encoding_size = 2
+
+        state_size = (
+            num_float_values + (num_community_cards * card_encoding_size) +
+            (num_hand_cards * num_players * card_encoding_size)
+        )
+
+    def get_state_representation(self, state=None, current_player=None):
         # Convert the game state to a numerical representation for the DQN
         if state is None:
             state = self.get_game_state()
@@ -145,14 +157,16 @@ class PokerGame:
         for card in community_cards:
             representation.extend(self.encode_card(card))
 
-        for card in state["oop_player"]["hand"]:
-            representation.extend(self.encode_card(card))
+        if current_player == self.oop_player:
+            for card in state["oop_player"]["hand"]:
+                representation.extend(self.encode_card(card))
+            representation.extend([0, 0] * 4)
+        else:
+            for card in state["ip_player"]["hand"]:
+                representation.extend(self.encode_card(card))
+            representation.extend([0, 0] * 4)
 
-        for card in state["ip_player"]["hand"]:
-            representation.extend(self.encode_card(card))
-
-        assert len(representation) == self.state_size, f"State size { self.state_size }"
-        # representation.extend([0, 0] * (self.state_size - len(representation)))
+        assert len(representation) == self.state_size, f"State size mismatch: expected { self.state_size }"
 
         return torch.FloatTensor(representation)
 
@@ -410,7 +424,7 @@ class PokerGame:
         if isinstance(self.current_player, HumanPlayer):
             return self.current_player.get_action(valid_actions, max_bet)
         else:
-            state = self.get_state_representation()
+            state = self.get_state_representation(current_player=self.current_player)
             if self.current_player == self.oop_player:
                 action, bet_size = self.oop_agent.act(state, valid_actions, max_bet, min_bet)
                 player = "oop"
