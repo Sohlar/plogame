@@ -85,8 +85,9 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         # Progress Report
         if e % 100 == 0:
 
-            oop_winrate = oop_cumulative_reward/(e/100)
-            ip_winrate = ip_cumulative_reward/(e/100)
+            episode_count = max(e/100, 1)
+            oop_winrate = oop_cumulative_reward/episode_count
+            ip_winrate = ip_cumulative_reward/episode_count
             winrate.labels(player='oop').set(oop_winrate)
             winrate.labels(player='ip').set(ip_winrate)
             logging.info(
