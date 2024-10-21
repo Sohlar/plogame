@@ -1,6 +1,5 @@
 import secrets
 import logging
-import sys
 import numpy as np
 from agent import DQNAgent
 from phevaluator import evaluate_omaha_cards
@@ -448,9 +447,6 @@ class PokerGame:
             if self.current_player == self.ip_player
             else self.ip_committed
         )
-
-        # print(f"{type(current_bet)}\n{type(pot)}\n{type(player_committed)}")
-        to_call = opponent_committed - player_committed
 
 
         if current_bet == 0:
