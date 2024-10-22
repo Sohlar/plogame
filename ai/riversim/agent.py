@@ -1,3 +1,4 @@
+from typing import List, Tuple, Union, Dict, Optional
 import numpy as np
 import torch
 import torch.nn as nn
@@ -23,6 +24,7 @@ class DQN(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, action_size)
         self.fc_bet = nn.Linear(256, 1)
+        self.fc_ev = nn.Linear(256, action_size)
 
     def forward(self, x):
         """
@@ -39,7 +41,8 @@ class DQN(nn.Module):
         x = torch.relu(self.fc2(x))
         actions = self.fc3(x)
         bet_size = torch.sigmoid(self.fc_bet(x))
-        return torch.cat([actions, bet_size], dim=-1)
+        ev = self.fc_ev(x)
+        return torch.cat([actions, bet_size, ev], dim=-1)
 
 
 
@@ -53,7 +56,7 @@ class DQNAgent:
             state_size (int): The size of the state space.
             action_size (int): The number of possible actions.
         """
-        self.name = None
+        self.name = ""
         self.state_size = state_size  # Dimension of poker game state (cards, pot, etc.)
         self.action_size = action_size  # Number of possible actions (fold, call, raise)
         self.batch_size = 128
@@ -68,6 +71,7 @@ class DQNAgent:
         self.target_model = DQN(state_size, action_size).to(self.device)  # Target network for stable Q-learning
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)  # Adam optimizer works well for poker's noisy rewards
         self.min_bet = 2
+        self.ev_weight = 0.5
 
     def remember(self, state, action, reward, next_state, done):
         """
@@ -114,16 +118,16 @@ class DQNAgent:
             # Exploration: randomly try actions to discover new poker strategies
             action = random.choice(valid_action_indices)
         else:
-            valid_q_values = q_values[0, valid_action_indices]
-            action = valid_action_indices[valid_q_values.argmax().item()]
+            combined_values = q_values[0, self.action_size] + self.ev_weight * q_values[0, -self.action_size:]
+            valid_values = combined_values[valid_action_indices]
+            action = valid_action_indices[valid_values.argmax().item()]
 
         bet_size = None
         if action == 3 and "bet" in valid_actions:
-            bet_fraction = q_values[0, -1].item()
+            bet_fraction = q_values[0, self.action_size].item()
             bet_size = max(min_bet, min(min_bet + bet_fraction * (max_bet - min_bet), max_bet))
-            ##print(f"DQN bet_size: {bet_size}")
             bet_size = round(bet_size, 0)
-            bet_size_metric.labels(player='oop' if self.name == 'OOP' else 'ip', street="agent_decision").observe(bet_size)  # Add this line
+            bet_size_metric.labels(player='oop' if self.name == 'OOP' else 'ip', street="agent_decision").observe(bet_size)  
 
 
         max_q_values = q_values[0, valid_action_indices].max().item()
@@ -149,35 +153,36 @@ class DQNAgent:
 
         # Convert to tensors for batch processing
         states = torch.stack(states)
-        actions = torch.cat(actions)
-        rewards = torch.cat(rewards)
+        actions = torch.LongTensor(actions).to(self.device)
+        rewards = torch.FloatTensor(rewards).to(self.device)
         next_states = torch.stack(next_states)
-        dones = torch.cat(dones)
+        dones = torch.FloatTensor(dones).to(self.device)
 
         # Compute current Q-values and target Q-values
-        current_q = self.model(states)
-        next_q = self.target_model(next_states).detach()
-        target_q = current_q.clone()
+        current_output = self.model(states)
+        current_q = current_output[:, :self.action_size]
+        current_ev = current_output[:, -self.action_size:]
 
-        for i in range(batch_size):
-            if actions[i] == 3:
-                target_q[i, -1] = rewards[i]
-            else:
-                target_q[i, actions[i]] = rewards[i] + self.gamma * next_q[i].max() * (1- dones[i])
+        with torch.no_grad():
+            next_output = self.target_model(next_states)
+            next_q = next_output[:, :self.action_size]
+            target_q = rewards + (1 - dones) * self.gamma * torch.max(next_q, dim=1)[0]
+
+        # Compute Losses
+        q_loss = nn.MSELoss()(current_q.gather(1, actions.unsqueeze(1)).squeeze(), target_q)
+        ev_loss = nn.MSELoss()(current_ev.gather(1, actions.unsqueeze(1)).squeeze(), rewards)
+        total_loss = q_loss + ev_loss
 
         # MSE loss helps the model learn to accurately predict action values in poker
-        loss = nn.MSELoss()(current_q, target_q)
         self.optimizer.zero_grad()
-        loss.backward()
+        total_loss.backward()
         self.optimizer.step()
 
         # Decay epsilon to gradually shift from exploration to exploitation
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-        loss_value = loss.item()
-
-        return loss_value
+        return total_loss.item()
 
     def update_target_model(self):
         """

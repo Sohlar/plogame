@@ -1,4 +1,6 @@
 import secrets
+from typing import List, Tuple, Dict, Optional, Union
+import random
 import logging
 import numpy as np
 from agent import DQNAgent
@@ -36,24 +38,24 @@ class Player:
         Player.players.append(self)
         self.name: str = name
         self.chips: int = chips
-        self.hand = []
+        self.hand: List[str] = []
 
     @classmethod
     def get_players(cls):
         return cls.players
 
-    def reset_hands():
+    def reset_hands(self):
         [player.hand.clear() for player in Player.get_players()]
 
-    def reset_chips():
+    def reset_chips(self):
         for player in Player.get_players():
             player.chips = CONST_100bb
 
 
 class HumanPlayer(Player):
     def get_action(self, valid_actions, max_bet):
-        # print(f"Valid actions: {valid_actions}")
-        # print(f"Maximum Bet: {max_bet}")
+        print(f"Valid actions: {valid_actions}")
+        print(f"Maximum Bet: {max_bet}")
         while True:
             action = input(f"Choose an action {valid_actions}: ")
             if action in valid_actions:
@@ -61,7 +63,7 @@ class HumanPlayer(Player):
                     bet_size = int(input("Enter the bet size: "))
                     return action, bet_size
                 return action
-            # print("Invalid action. Please try again.")
+            print("Invalid action. Please try again.")
 
 
 class Deck:
@@ -124,59 +126,6 @@ class PokerGame:
 
         logging.info("PokerGame initialized")
 
-    def calculate_state_size(self):
-        num_float_values = 7 #pot, current_bet, length of community_cards == street, chips * 2, and committed * 2
-        num_community_cards = 5
-        num_hand_cards = 4
-        num_players = 2
-        card_encoding_size = 2
-
-        state_size = (
-            num_float_values + (num_community_cards * card_encoding_size) +
-            (num_hand_cards * num_players * card_encoding_size)
-        )
-
-    def get_state_representation(self, state=None, current_player=None):
-        # Convert the game state to a numerical representation for the DQN
-        if state is None:
-            state = self.get_game_state()
-        representation = [
-            float(state["pot"]),
-            float(len(state["community_cards"])),
-            float(state["current_bet"]),
-            float(state["oop_player"]["chips"]),
-            float(state["ip_player"]["chips"]),
-            float(state["oop_player"]["committed"]),
-            float(state["ip_player"]["committed"]),
-        ]
-        # Add encoded representations of community cards and player hands
-        community_cards = state["community_cards"] + [""] * (
-            5 - len(state["community_cards"])
-        )
-        for card in community_cards:
-            representation.extend(self.encode_card(card))
-
-        if current_player == self.oop_player:
-            for card in state["oop_player"]["hand"]:
-                representation.extend(self.encode_card(card))
-            representation.extend([0, 0] * 4)
-        else:
-            for card in state["ip_player"]["hand"]:
-                representation.extend(self.encode_card(card))
-            representation.extend([0, 0] * 4)
-
-        assert len(representation) == self.state_size, f"State size mismatch: expected { self.state_size }"
-
-        return torch.FloatTensor(representation)
-
-    def encode_card(self, card):
-        if not card:
-            return [0, 0]
-        # Simple encoding: rank (2-14) and suit (0-3)
-        ranks = "23456789TJQKA"
-        suits = "cdhs"
-        return (ranks.index(card[0]) + 2, suits.index(card[1]))
-
     def initialize_game_state(self):
         self.community_cards = []
         self.hand_over = False
@@ -198,6 +147,7 @@ class PokerGame:
         self.reset_hands()
         self.deck.shuffle()
         self.pot = 3
+        print(f"Start_new_hand() pot: {self.pot}")
         self.oop_player.chips = 198
         self.ip_player.chips = 199
         self.deal_cards()
@@ -207,10 +157,11 @@ class PokerGame:
         self.initialize_game_state()
         self.reset_hands()
         self.deck.shuffle()
-        while self.pot % 4 != 0:
-            self.pot = secrets.SystemRandom.randint(4,396)  
-        player_chips = 400 - self.pot / 2 
-        self.oop_player.chips, self.ip_player.chips = player_chips
+        self.pot = random.randrange(4,396, 4)
+        print(f"start_new_river_scenario() pot: {self.pot}")
+        player_chips = int((400 - self.pot) / 2)
+        self.oop_player.chips = player_chips
+        self.ip_player.chips = player_chips
         committed = self.pot / 2
         self.ip_committed = committed
         self.oop_committed = committed
@@ -219,18 +170,22 @@ class PokerGame:
 
     def play_hand(self):
         logging.info("Starting new hand")
+        print("Starting new hand")
         game_state = self.start_new_river_scenario()
 
         oop_experiences = []
         ip_experiences = []
 
         self.deal_community_cards(4)
-        game_state, round_experiences = self.deal_river
-        game_state = self.determine_showdown_winner
+        game_state, round_experiences = self.deal_river()
+        game_state = self.determine_showdown_winner()
         game_state["hand_over"] = True
 
         oop_experiences.extend(round_experiences[0])
         ip_experiences.extend(round_experiences[1])
+
+        print(f"{game_state}")
+        print("\n" + "="*20)
 
         final_state = self.get_state_representation()
         oop_reward, ip_reward = self.calculate_rewards(game_state)
@@ -266,8 +221,8 @@ class PokerGame:
 
     def determine_showdown_winner(self):
         logging.info("Determining Showdown Winner")
-        #print(f"\nIP Tables: {self.ip_player.hand}")
-        #print(f"\nOOP Tables: {self.oop_player.hand}\n")
+        print(f"\nIP Tables: {self.ip_player.hand}")
+        print(f"\nOOP Tables: {self.oop_player.hand}\n")
         updated_state = self.get_game_state()
         # fmt: off
         ip_rank = evaluate_omaha_cards(
@@ -281,18 +236,14 @@ class PokerGame:
         # fmt: on
 
         if ip_rank < oop_rank:
-            # print(f"{updated_state['ip_player']['name']} wins {self.pot}")
-            # print(f"{self.ip_player.hand}")
             updated_state["ip_player"]["chips"] += self.pot
         elif oop_rank < ip_rank:
-            # print(f"{updated_state['oop_player']['name']} wins {self.pot}")
             updated_state["oop_player"]["chips"] += self.pot
         else:
             updated_state["ip_player"]["chips"] += self.pot / 2
             updated_state["oop_player"]["chips"] += self.pot / 2
 
-        # print(f"\nCommunity Cards: {self.community_cards}")
-
+        updated_state['pot'] = 0
         updated_state["hand_over"] = True
 
         return updated_state
@@ -332,7 +283,7 @@ class PokerGame:
         self.pot = 0
         self.oop_player.hand = []
         self.ip_player.hand = []
-        self.current_bet = 2
+        self.current_bet = 0
         self.num_actions = 0
         self.last_action = None
         self.hand_over = False
@@ -403,10 +354,12 @@ class PokerGame:
             state = self.get_state_representation(current_player=self.current_player)
             if self.current_player == self.oop_player:
                 action, bet_size = self.oop_agent.act(state, valid_actions, max_bet, min_bet)
+                print(f"{self.current_player.name} {action}s {bet_size}")
                 player = "oop"
                 agent = self.oop_agent
             else:
                 action, bet_size = self.ip_agent.act(state, valid_actions, max_bet, min_bet)
+                print(f"{self.current_player.name} {action}s {bet_size}")
                 player = "ip"
                 agent = self.ip_agent
 
@@ -415,7 +368,7 @@ class PokerGame:
 
             q_value.labels(player).set(np.max(agent.model(state.to(agent.device)).cpu().data.numpy()))
             epsilon.labels(player).set(agent.epsilon)
-            # print(f"Player: {player}\nAction: {chosen_action}")
+            print(f"Player: {player}\nAction: {chosen_action}")
             action_taken.labels(player_action=f"{player}_{chosen_action}").inc()
 
         if chosen_action == "bet":
@@ -431,23 +384,9 @@ class PokerGame:
     def calculate_max_postflop_bet_size(self, initial_pot):
         max_bet = 0
         state = self.get_game_state()
-        pot = state["pot"]
-        print(f"POT: {pot}")
+
         current_bet = state["current_bet"]
-        print(f"CURRENT_BET: {current_bet}")
         player_chips = self.current_player.chips
-        player_committed = (
-            self.oop_committed
-            if self.current_player == self.oop_player
-            else self.ip_committed
-        )
-
-        opponent_committed = (
-            self.oop_committed
-            if self.current_player == self.ip_player
-            else self.ip_committed
-        )
-
 
         if current_bet == 0:
             max_bet = min(initial_pot, player_chips)
@@ -462,24 +401,24 @@ class PokerGame:
         logging.info("Starting Postflop Betting")
         state = self.get_game_state()
         initial_pot = state["pot"]
+        print(f"postflop_betting pot: {initial_pot}")
         self.current_bet = 0
         self.num_actions = 0
         self.current_player = self.oop_player
 
         oop_experiences = []
         ip_experiences = []
-        oop_committed = 0
-        ip_committed = 0
 
         while True:
             state = self.get_game_state()
             state_representation = self.get_state_representation()
 
             logging.info(f"Current State: {state}")
-            # print(f"\nCommunity Cards: {state['community_cards']}")
-            # print(f"Your Hand: {self.get_player_hand()}")
-            # print( f"IP Chips: {state[self.ip_player.name.lower() + '_player']['chips']}")
-            # print( f"OOP Chips: {state[self.oop_player.name.lower() + '_player']['chips']}")
+            print(f"\nCommunity Cards: {state['community_cards']}")
+            print(f"Your Hand: {self.get_player_hand()}")
+            print( f"IP Chips: {state[self.ip_player.name.lower() + '_player']['chips']}")
+            print( f"OOP Chips: {state[self.oop_player.name.lower() + '_player']['chips']}")
+            print(f"Pot: {state['pot']}")
 
             if self.hand_over or self.num_active_players == 1:
                 self.current_player.chips += self.pot
@@ -496,18 +435,17 @@ class PokerGame:
                 return game_state, (oop_experiences, ip_experiences)
 
             valid_actions, min_bet = self.get_valid_postflop_actions()
+            print(f"{state['current_player']} Valid Actions: {valid_actions}")
             max_bet = self.calculate_max_postflop_bet_size(initial_pot)
-            # print(f"Finished getting valid actions: {valid_actions}")
-            #print(f"MAX BET: {max_bet}")
+            print(f"{state['current_player']} max Bet: {max_bet}")
             action = self.get_player_action(valid_actions, max_bet, min_bet)
 
             if isinstance(action, tuple):
-                # print("CORRECT INSTANCE TUPLE")
                 action, bet_size = action
+                print(f"Action: {action} Bet Size: {bet_size}")
                 logging.info(f"Received bet size: {bet_size}")
             else:
                 bet_size = None
-            # print(f"Finished getting action: {action}")
             action_int = self.action_to_int(action)
 
             if self.current_player == self.oop_player:
@@ -519,19 +457,15 @@ class PokerGame:
                     (state_representation, action_int, valid_actions, bet_size, max_bet)
                 )
 
-            # print( f"Before process_postflop_action, current player: {self.current_player.name}")
             self.process_postflop_action(action, bet_size)
-            # print( f"After process_postflop_action, current player: {self.current_player.name}")
 
             if self.last_action == "call" and self.oop_committed == self.ip_committed:
                 game_state = self.get_game_state()
                 game_state["message"] = f"{street.capitalize()} betting complete"
                 return game_state, (oop_experiences, ip_experiences)
-        return game_state, (oop_experiences, ip_experiences)
 
-    def process_postflop_action(self, action, bet_size=None):
+    def process_postflop_action(self, action, bet_size: Optional[int] = 0):
         logging.info(f"Processing Postflop Action: {action}")
-        # print(f"Bet Size: {bet_size}")
 
         if action == "check":
             self.handle_postflop_check()
@@ -547,11 +481,13 @@ class PokerGame:
     def get_valid_postflop_actions(self):
         valid_actions = []
         min_bet = max(MINIMUM_BET_INCREMENT, min(self.current_bet * 2, self.current_player.chips))
-        # print(f"GET VALID POSTFLOP ACTIONS max_bet {max_bet}")
 
-        if self.oop_player.chips == 0 or self.ip_player.chips == 0:
+        print(f"\nself.oop_player.chips = {type(self.oop_player.chips)} {self.oop_player.chips}")
+        print(f"\nself.oop_player.chips = {type(self.oop_player.chips)} {self.oop_player.chips}")
+        print(type(0.0))
+        if self.oop_player.chips == 0.0 or self.ip_player.chips == 0.0:
             valid_actions = ["call", "fold"]
-        if self.current_bet == 0:
+        elif self.current_bet == 0:
             valid_actions = ["check", "bet"]
         else:
             valid_actions = ["call", "bet", "fold"]
@@ -581,9 +517,9 @@ class PokerGame:
     def handle_postflop_call(self):
         logging.info("Handling postflop CALL for {self.current_player.name}")
         if self.current_player.name == self.oop_player.name:
-            call_amount = self.oop_committed - self.ip_committed
+            call_amount = int(self.oop_committed - self.ip_committed)
         else:
-            call_amount = self.ip_committed - self.oop_committed
+            call_amount = int(self.ip_committed - self.oop_committed)
         if call_amount <= self.current_player.chips:
             self.current_player.chips += call_amount
             self.pot -= call_amount
@@ -600,15 +536,6 @@ class PokerGame:
                 self.oop_committed += all_in_amount
             else:
                 self.ip_committed += all_in_amount
-            """
-            other_player = (
-                self.ip_player
-                if self.current_player == self.oop_player
-                else self.oop_player
-            )
-            other_player.chips += difference
-            self.pot -= difference
-            """
         self.num_actions += 1
         self.last_action = "call"
 
@@ -622,27 +549,65 @@ class PokerGame:
         self.num_active_players -= 1
         self.hand_over = True
 
-    def calculate_postflop_bet_size(self):
-        all_in = False
-        max_bet = self.calculate_max_postflop_bet_size()
-
-        if bet_size is None:
-            if self.last_action == "bet":
-                # If it's a raise, the bet size is 3 times the last raise plus the current pot size
-                bet_size = min(2 * self.current_bet + self.pot, max_bet)
-            else:
-                # If it's a standard bet, the bet size is equal to the current pot size
-                bet_size = (self.pot, max_bet)
-
-        if self.current_player.chips < bet_size:
-            bet_size = self.current_player.chips
-            all_in = True
-
-        return all_in, bet_size
-
     def switch_players(self):
         self.current_player = (
             self.oop_player
             if self.current_player.name == self.ip_player.name
             else self.ip_player
         )
+
+    def calculate_state_size(self):
+        num_float_values = 7 #pot, current_bet, length of community_cards == street, chips * 2, and committed * 2
+        num_community_cards = 5
+        num_hand_cards = 4
+        num_players = 2
+        card_encoding_size = 2
+
+        state_size = (
+            num_float_values + (num_community_cards * card_encoding_size) +
+            (num_hand_cards * num_players * card_encoding_size)
+        )
+
+        return state_size
+
+    def get_state_representation(self, state=None, current_player=None):
+        # Convert the game state to a numerical representation for the DQN
+        if state is None:
+            state = self.get_game_state()
+        representation = [
+            float(state["pot"]),
+            float(len(state["community_cards"])),
+            float(state["current_bet"]),
+            float(state["oop_player"]["chips"]),
+            float(state["ip_player"]["chips"]),
+            float(state["oop_player"]["committed"]),
+            float(state["ip_player"]["committed"]),
+        ]
+        # Add encoded representations of community cards and player hands
+        community_cards = state["community_cards"] + [""] * (
+            5 - len(state["community_cards"])
+        )
+        for card in community_cards:
+            representation.extend(self.encode_card(card))
+
+        if current_player == self.oop_player:
+            for card in state["oop_player"]["hand"]:
+                representation.extend(self.encode_card(card))
+            representation.extend([0, 0] * 4)
+        else:
+            for card in state["ip_player"]["hand"]:
+                representation.extend(self.encode_card(card))
+            representation.extend([0, 0] * 4)
+
+        assert len(representation) == self.state_size, f"State size mismatch: expected { self.state_size }"
+
+        return torch.FloatTensor(representation)
+
+    def encode_card(self, card):
+        if not card:
+            return [0, 0]
+        # Simple encoding: rank (2-14) and suit (0-3)
+        ranks = "23456789TJQKA"
+        suits = "cdhs"
+        return (ranks.index(card[0]) + 2, suits.index(card[1]))
+

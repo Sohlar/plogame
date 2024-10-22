@@ -108,13 +108,13 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
         save_model(game.ip_agent, "ip")
 
 
-def main(args):
+def main(mode='train', hands=10, train_oop=True, train_ip=True):
 
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
 
-    mode = args.mode
+    mode = mode
 
     if mode == 'play':
         position = input("Enter 'oop' or 'ip': ")
@@ -134,9 +134,9 @@ def main(args):
 
         play_against_ai(game)
     else:
-        episode_choice = args.hands
-        train_oop = args.train_oop
-        train_ip = args.train_ip
+        episode_choice = hands
+        train_oop = train_oop
+        train_ip = train_ip
         oop_agent = None
         ip_agent = None
 
@@ -187,15 +187,15 @@ def save_model(agent, position):
 
 if __name__ == "__main__":
     start_http_server(8000)
-    parser = argparse.ArgumentParser(description="PLO model DQN")
-    parser.add_argument("--mode", type=str, choices=['train', 'play'], required=True, help="'Play' or 'Train'")
-    parser.add_argument("--hands", type=int, required=True, help="Number of hands to train on")
-    parser.add_argument("--train_ip", action="store_true", help="Train an IP model")
-    parser.add_argument("--train_oop", action="store_true", help="Train an OOP model")
+    #parser = argparse.ArgumentParser(description="PLO model DQN")
+    #parser.add_argument("--mode", type=str, choices=['train', 'play'], required=True, help="'Play' or 'Train'")
+    #parser.add_argument("--hands", type=int, required=True, help="Number of hands to train on")
+    #parser.add_argument("--train_ip", action="store_true", help="Train an IP model")
+    #parser.add_argument("--train_oop", action="store_true", help="Train an OOP model")
 
-    args = parser.parse_args()
+    #args = parser.parse_args()
      
-    if args.mode == 'train' and args.hands is None:
-        parser.error("--hands is required in training mode.")
-    main(args)
+    #if args.mode == 'train' and args.hands is None:
+    #    parser.error("--hands is required in training mode.")
+    main()
 
