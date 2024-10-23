@@ -32,9 +32,26 @@ setup_logging()
 
 #### Player Class ####
 class Player:
+    """
+    Represents a player in the poker game.
+
+    Attributes:
+        players (list): A class variable to keep track of all players.
+        name (str): The name of the player.
+        chips (int): The number of chips the player has.
+        hand (list): The player's current hand of cards.
+    """
+
     players = []
 
     def __init__(self, name: str, chips: int) -> None:
+        """
+        Initialize a new player.
+
+        Args:
+            name (str): The name of the player.
+            chips (int): The initial number of chips for the player.
+        """
         Player.players.append(self)
         self.name: str = name
         self.chips: int = chips
@@ -42,18 +59,42 @@ class Player:
 
     @classmethod
     def get_players(cls):
+        """
+        Get all players in the game.
+
+        Returns:
+            list: A list of all Player objects.
+        """
         return cls.players
 
     def reset_hands(self):
+        """Reset the hands of all players."""
         [player.hand.clear() for player in Player.get_players()]
 
     def reset_chips(self):
+        """Reset the chips of all players to the initial amount."""
         for player in Player.get_players():
             player.chips = CONST_100bb
 
 
 class HumanPlayer(Player):
+    """
+    Represents a human player in the poker game.
+
+    Inherits from Player class and adds method for getting human input.
+    """
+
     def get_action(self, valid_actions, max_bet):
+        """
+        Get the action from human input.
+
+        Args:
+            valid_actions (list): List of valid actions the player can take.
+            max_bet (int): The maximum bet amount allowed.
+
+        Returns:
+            str or tuple: The chosen action, or a tuple of action and bet size if betting.
+        """
         print(f"Valid actions: {valid_actions}")
         print(f"Maximum Bet: {max_bet}")
         while True:
@@ -67,7 +108,15 @@ class HumanPlayer(Player):
 
 
 class Deck:
+    """
+    Represents a deck of cards in the poker game.
+
+    Attributes:
+        cards (list): A list of all cards in the deck.
+    """
+
     def __init__(self):
+        """Initialize a new deck with all 52 cards."""
         # fmt: off
         self.cards = [
             "2c", "3c", "4c", "5c", "6c", "7c", "8c", "9c", "Tc", "Jc", "Qc", "Kc", "Ac", 
@@ -78,11 +127,43 @@ class Deck:
         # fmt: on
 
     def shuffle(self):
+        """Shuffle the deck using a cryptographically secure random number generator."""
         secrets.SystemRandom().shuffle(self.cards)
 
 
 class PokerGame:
+    """
+    Represents a poker game.
+
+    This class manages the game state, players, and game logic.
+
+    Attributes:
+        deck (Deck): The deck of cards for the game.
+        oop_player (Player): The out-of-position player.
+        ip_player (Player): The in-position player.
+        oop_agent (DQNAgent): The DQN agent for the out-of-position player.
+        ip_agent (DQNAgent): The DQN agent for the in-position player.
+        community_cards (list): The community cards on the table.
+        pot (int): The current pot size.
+        current_bet (int): The current bet amount.
+        num_actions (int): The number of actions taken in the current hand.
+        last_action (str): The last action taken.
+        current_player (Player): The player whose turn it is.
+        num_active_players (int): The number of players still in the hand.
+        street (str): The current street of play.
+        waiting_for_action (bool): Whether the game is waiting for a player action.
+        is_allin (bool): Whether a player has gone all-in.
+    """
+
     def __init__(self, human_position=None, oop_agent=None, ip_agent=None):
+        """
+        Initialize a new poker game.
+
+        Args:
+            human_position (str, optional): The position of the human player ('oop' or 'ip').
+            oop_agent (DQNAgent, optional): A pre-initialized agent for the OOP player.
+            ip_agent (DQNAgent, optional): A pre-initialized agent for the IP player.
+        """
         self.deck = Deck()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,6 +208,7 @@ class PokerGame:
         logging.info("PokerGame initialized")
 
     def initialize_game_state(self):
+        """Initialize or reset the game state to start a new hand."""
         self.community_cards = []
         self.hand_over = False
         self.current_bet = 0
@@ -139,10 +221,17 @@ class PokerGame:
         self.is_allin = False
 
     def deal_cards(self):
+        """Deal cards to both players."""
         for player in [self.oop_player, self.ip_player]:
             player.hand = [self.deck.cards.pop() for _ in range(4)]
 
     def start_new_hand(self):
+        """
+        Start a new hand by resetting the game state and dealing new cards.
+
+        Returns:
+            dict: The initial game state.
+        """
         self.initialize_game_state()
         self.reset_hands()
         self.deck.shuffle()
@@ -153,6 +242,12 @@ class PokerGame:
         return self.get_game_state()
 
     def start_new_river_scenario(self):
+        """
+        Start a new river scenario with random pot size and player chips.
+
+        Returns:
+            dict: The initial game state for the river scenario.
+        """
         self.initialize_game_state()
         self.reset_hands()
         self.deck.shuffle()
@@ -167,6 +262,12 @@ class PokerGame:
         return self.get_game_state()
 
     def play_hand(self):
+        """
+        Play a complete hand of poker.
+
+        Returns:
+            tuple: A tuple containing the final game state, OOP reward, and IP reward.
+        """
         logging.info("Starting new hand")
         print("Starting new hand")
         game_state = self.start_new_river_scenario()
@@ -209,6 +310,12 @@ class PokerGame:
         return game_state, oop_reward, ip_reward
 
     def get_player_hand(self):
+        """
+        Get the hand of the human player, if any.
+
+        Returns:
+            list or None: The hand of the human player, or None if no human player.
+        """
         if isinstance(self.oop_player, HumanPlayer):
             return self.oop_player.hand
         elif isinstance(self.ip_player, HumanPlayer):
@@ -217,6 +324,12 @@ class PokerGame:
             return None
 
     def determine_showdown_winner(self):
+        """
+        Determine the winner of the hand at showdown.
+
+        Returns:
+            dict: The updated game state after determining the winner.
+        """
         logging.info("Determining Showdown Winner")
         print(f"\nIP Tables: {self.ip_player.hand}")
         print(f"\nOOP Tables: {self.oop_player.hand}\n")
@@ -246,6 +359,15 @@ class PokerGame:
         return updated_state
 
     def calculate_rewards(self, game_state):
+        """
+        Calculate the rewards for both players based on the current game state.
+
+        Args:
+            game_state (dict): The current state of the game.
+
+        Returns:
+            tuple: A tuple containing the rewards for the OOP and IP players, respectively.
+        """
         oop_reward = game_state["oop_player"]["chips"] - CONST_100bb
         ip_reward = game_state["ip_player"]["chips"] - CONST_100bb
 
@@ -256,24 +378,51 @@ class PokerGame:
         return oop_reward, ip_reward
 
     def deal_flop(self):
+        """
+        Deal the flop cards and initiate the flop betting round.
+
+        Returns:
+            tuple: A tuple containing the updated game state and the experiences of both players.
+        """
         logging.info("Dealing flop")
         self.deal_community_cards(3)
         return self.postflop_betting(street="flop")
 
     def deal_turn(self):
+        """
+        Deal the turn card and initiate the turn betting round.
+
+        Returns:
+            tuple: A tuple containing the updated game state and the experiences of both players.
+        """
         logging.info("Dealing Turn")
         self.deal_community_cards(1)
         return self.postflop_betting(street="turn")
 
     def deal_river(self):
+        """
+        Deal the river card and initiate the river betting round.
+
+        Returns:
+            tuple: A tuple containing the updated game state and the experiences of both players.
+        """
         logging.info("Dealing River")
         self.deal_community_cards(1)
         return self.postflop_betting(street="river")
 
     def deal_community_cards(self, num_cards):
+        """
+        Deal a specified number of community cards from the deck.
+
+        Args:
+            num_cards (int): The number of cards to deal.
+        """
         self.community_cards.extend([self.deck.cards.pop() for _ in range(num_cards)])
 
     def reset_hands(self):
+        """
+        Reset the game state for a new hand, including the deck, community cards, and player hands.
+        """
         logging.info("Resetting Hands")
         self.deck = Deck()
         self.community_cards = []
@@ -287,6 +436,12 @@ class PokerGame:
         self.is_allin = False
 
     def get_game_state(self):
+        """
+        Get the current game state, including all public and private information.
+
+        Returns:
+            dict: A dictionary representing the current game state.
+        """
         return {
             "pot": self.pot,
             "community_cards": self.community_cards,
@@ -312,6 +467,12 @@ class PokerGame:
         }
 
     def get_public_game_state(self):
+        """
+        Get the public game state, excluding private information such as player hands.
+
+        Returns:
+            dict: A dictionary representing the public game state.
+        """
         return {
             "pot": self.pot,
             "community_cards": self.community_cards,
@@ -334,6 +495,12 @@ class PokerGame:
         }
 
     def get_private_game_state(self):
+        """
+        Get the private game state, including only the players' hands.
+
+        Returns:
+            dict: A dictionary representing the private game state.
+        """
         return {
             "oop_player": {
                 "hand": self.oop_player.hand,
@@ -344,6 +511,17 @@ class PokerGame:
         }
 
     def get_player_action(self, valid_actions, max_bet, min_bet):
+        """
+        Get the action for the current player, either from a human player or an AI agent.
+
+        Args:
+            valid_actions (list): A list of valid actions for the current player.
+            max_bet (int): The maximum bet amount allowed.
+            min_bet (int): The minimum bet amount allowed.
+
+        Returns:
+            str or tuple: The chosen action, or a tuple of the action and bet size for betting actions.
+        """
         logging.info(f"Getting {self.current_player.name}'s Action: ({valid_actions})")
         if isinstance(self.current_player, HumanPlayer):
             return self.current_player.get_action(valid_actions, max_bet)
@@ -373,10 +551,28 @@ class PokerGame:
         return chosen_action
 
     def action_to_int(self, action):
+        """
+        Convert a string action to its corresponding integer representation.
+
+        Args:
+            action (str): The action as a string.
+
+        Returns:
+            int: The integer representation of the action.
+        """
         action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
         return action_map[action]
 
     def calculate_max_postflop_bet_size(self, initial_pot):
+        """
+        Calculate the maximum bet size allowed for the current player in the postflop betting round.
+
+        Args:
+            initial_pot (int): The size of the pot at the start of the betting round.
+
+        Returns:
+            int: The maximum bet size allowed.
+        """
         max_bet = 0
         state = self.get_game_state()
 
@@ -389,10 +585,18 @@ class PokerGame:
             max_raise = 3 * current_bet + initial_pot
             max_bet = min(max_raise, player_chips)
 
-        #Could include the min bet to be set here as well
         return min(max_bet, player_chips)
 
     def postflop_betting(self, street):
+        """
+        Handle the postflop betting round for a given street (flop, turn, or river).
+
+        Args:
+            street (str): The current street ('flop', 'turn', or 'river').
+
+        Returns:
+            tuple: A tuple containing the updated game state and the experiences of both players.
+        """
         logging.info("Starting Postflop Betting")
         state = self.get_game_state()
         initial_pot = state["pot"]
@@ -461,6 +665,13 @@ class PokerGame:
                 return game_state, (oop_experiences, ip_experiences)
 
     def process_postflop_action(self, action, bet_size: Optional[int] = 0):
+        """
+        Process the action taken by a player in the postflop betting round.
+
+        Args:
+            action (str): The action taken by the player.
+            bet_size (Optional[int]): The size of the bet, if applicable.
+        """
         logging.info(f"Processing Postflop Action: {action}")
 
         if action == "check":
@@ -475,6 +686,12 @@ class PokerGame:
         self.switch_players()
 
     def get_valid_postflop_actions(self):
+        """
+        Determine the valid actions for the current player in the postflop betting round.
+
+        Returns:
+            tuple: A tuple containing a list of valid actions and the minimum bet size.
+        """
         valid_actions = []
         min_bet = max(MINIMUM_BET_INCREMENT, min(self.current_bet * 2, self.current_player.chips))
 
@@ -488,6 +705,12 @@ class PokerGame:
         return valid_actions, min_bet
 
     def handle_postflop_bet(self, bet_size=MINIMUM_BET_INCREMENT):
+        """
+        Handle a bet action in the postflop betting round.
+
+        Args:
+            bet_size (int): The size of the bet.
+        """
         logging.info(
             f"Handling postflop bet of {bet_size} for {self.current_player.name}"
         )
@@ -508,6 +731,9 @@ class PokerGame:
             update_bet_size("oop", bet_size, self.pot)
 
     def handle_postflop_call(self):
+        """
+        Handle a call action in the postflop betting round.
+        """
         logging.info("Handling postflop CALL for {self.current_player.name}")
         if self.current_player.name == self.oop_player.name:
             call_amount = int(self.oop_committed - self.ip_committed)
@@ -533,16 +759,25 @@ class PokerGame:
         self.last_action = "call"
 
     def handle_postflop_check(self):
+        """
+        Handle a check action in the postflop betting round.
+        """
         logging.info(f"Handling postflop CHECK for {self.current_player.name}")
         self.num_actions += 1
         self.last_action = "check"
 
     def handle_fold(self):
+        """
+        Handle a fold action in the postflop betting round.
+        """
         logging.info(f"Handling postflop FOLD for {self.current_player.name}")
         self.num_active_players -= 1
         self.hand_over = True
 
     def switch_players(self):
+        """
+        Switch the current player to the other player.
+        """
         self.current_player = (
             self.oop_player
             if self.current_player.name == self.ip_player.name
@@ -550,6 +785,12 @@ class PokerGame:
         )
 
     def calculate_state_size(self):
+        """
+        Calculate the size of the state representation.
+
+        Returns:
+            int: The size of the state representation.
+        """
         num_float_values = 7 #pot, current_bet, length of community_cards == street, chips * 2, and committed * 2
         num_community_cards = 5
         num_hand_cards = 4
@@ -564,7 +805,16 @@ class PokerGame:
         return state_size
 
     def get_state_representation(self, state=None, current_player=None):
-        # Convert the game state to a numerical representation for the DQN
+        """
+        Get a numerical representation of the game state for the DQN.
+
+        Args:
+            state (Optional[dict]): The game state to represent. If None, use the current game state.
+            current_player (Optional[Player]): The current player. If None, use the game's current player.
+
+        Returns:
+            torch.FloatTensor: A tensor representing the game state.
+        """
         if state is None:
             state = self.get_game_state()
         representation = [
@@ -597,6 +847,15 @@ class PokerGame:
         return torch.FloatTensor(representation)
 
     def encode_card(self, card):
+        """
+        Encode a card as a tuple of integers.
+
+        Args:
+            card (str): A string representation of a card (e.g., "Ah" for Ace of hearts).
+
+        Returns:
+            tuple: A tuple of two integers representing the rank and suit of the card.
+        """
         if not card:
             return [0, 0]
         # Simple encoding: rank (2-14) and suit (0-3)
@@ -605,11 +864,19 @@ class PokerGame:
         return (ranks.index(card[0]) + 2, suits.index(card[1]))
 
     def get_hand_strength(self, hand):
+        """
+        Calculate the strength of a hand using the phevaluator library.
+
+        Args:
+            hand (list): A list of four cards representing an Omaha hand.
+
+        Returns:
+            int: The hand rank as calculated by the phevaluator.
+        """
         hand_rank = evaluate_omaha_cards(
             self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
             hand[0], hand[1], hand[2], hand[3]
         )
 
         return hand_rank
-
 

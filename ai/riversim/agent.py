@@ -10,6 +10,14 @@ from metrics import q_value, epsilon, action_taken, bet_size_metric
 
 
 class DQN(nn.Module):
+    """
+    Deep Q-Network (DQN) model for poker strategy.
+
+    This neural network is designed to learn and represent complex poker strategies.
+    It takes the game state as input and outputs Q-values for different actions,
+    as well as a bet size and expected values for each action.
+    """
+
     def __init__(self, state_size, action_size):
         """
         Initialize the Deep Q-Network.
@@ -31,10 +39,10 @@ class DQN(nn.Module):
         Perform a forward pass through the network.
 
         Args:
-            x (torch.Tensor): The input tensor.
+            x (torch.Tensor): The input tensor representing the game state.
 
         Returns:
-            torch.Tensor: The output tensor.
+            torch.Tensor: The output tensor containing Q-values, bet size, and expected values.
         """
         # ReLU activations allow the network to learn non-linear poker strategies
         x = torch.relu(self.fc1(x))
@@ -48,6 +56,14 @@ class DQN(nn.Module):
 
 # fmt: off
 class DQNAgent:
+    """
+    DQN Agent for playing poker.
+
+    This agent uses a Deep Q-Network to learn and make decisions in a poker game.
+    It implements experience replay, epsilon-greedy exploration, and target network
+    for stable learning.
+    """
+
     def __init__(self, state_size, action_size):
         """
         Initialize the DQN Agent.
@@ -77,12 +93,14 @@ class DQNAgent:
         """
         Store a transition in the replay memory.
 
+        This method is used to collect experiences for later training.
+
         Args:
-            state: The current state.
-            action: The action taken.
-            reward: The reward received.
-            next_state: The resulting state.
-            done: Whether the episode has ended.
+            state (torch.Tensor): The current state.
+            action (int): The action taken.
+            reward (float): The reward received.
+            next_state (torch.Tensor): The resulting state.
+            done (bool): Whether the episode has ended.
         """
         # Store experiences to learn from diverse poker situations
         state = torch.FloatTensor(state).to(self.device) if not isinstance(state, torch.Tensor) else state.to(self.device)
@@ -97,11 +115,16 @@ class DQNAgent:
         """
         Choose an action using an epsilon-greedy policy.
 
+        This method balances exploration and exploitation in action selection.
+
         Args:
-            state: The current state.
+            state (torch.Tensor): The current state.
+            valid_actions (List[str]): List of valid actions in the current state.
+            max_bet (float): Maximum allowed bet size.
+            min_bet (float): Minimum allowed bet size.
 
         Returns:
-            int: The chosen action.
+            Tuple[int, Optional[float]]: The chosen action and bet size (if applicable).
         """
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
         with torch.no_grad():
@@ -141,8 +164,13 @@ class DQNAgent:
         """
         Train the model using experiences from the replay memory.
 
+        This method implements experience replay to break correlations between consecutive samples.
+
         Args:
             batch_size (int): The number of samples to use for training.
+
+        Returns:
+            float: The total loss from the training step.
         """
 
         if len(self.memory) < self.batch_size:
@@ -187,6 +215,8 @@ class DQNAgent:
     def update_target_model(self):
         """
         Update the target model with the weights of the main model.
+
+        This method is used to stabilize training by periodically updating the target network.
         """
         # Periodically update target network to stabilize training
         self.target_model.load_state_dict(self.model.state_dict())
