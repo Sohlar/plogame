@@ -55,7 +55,7 @@ sympy==1.13.1
 tomli==2.0.1
 torch==2.4.0
 triton==3.0.0
-Twisted==24.3.0
+Twisted==24.7.0rc1
 txaio==23.1.1
 typing_extensions==4.12.2
 Werkzeug==3.0.3

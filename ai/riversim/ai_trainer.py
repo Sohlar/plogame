@@ -147,7 +147,6 @@ class PokerGame:
         self.reset_hands()
         self.deck.shuffle()
         self.pot = 3
-        print(f"Start_new_hand() pot: {self.pot}")
         self.oop_player.chips = 198
         self.ip_player.chips = 199
         self.deal_cards()
@@ -158,7 +157,6 @@ class PokerGame:
         self.reset_hands()
         self.deck.shuffle()
         self.pot = random.randrange(4,396, 4)
-        print(f"start_new_river_scenario() pot: {self.pot}")
         player_chips = int((400 - self.pot) / 2)
         self.oop_player.chips = player_chips
         self.ip_player.chips = player_chips
@@ -184,7 +182,6 @@ class PokerGame:
         oop_experiences.extend(round_experiences[0])
         ip_experiences.extend(round_experiences[1])
 
-        print(f"{game_state}")
         print("\n" + "="*20)
 
         final_state = self.get_state_representation()
@@ -354,12 +351,10 @@ class PokerGame:
             state = self.get_state_representation(current_player=self.current_player)
             if self.current_player == self.oop_player:
                 action, bet_size = self.oop_agent.act(state, valid_actions, max_bet, min_bet)
-                print(f"{self.current_player.name} {action}s {bet_size}")
                 player = "oop"
                 agent = self.oop_agent
             else:
                 action, bet_size = self.ip_agent.act(state, valid_actions, max_bet, min_bet)
-                print(f"{self.current_player.name} {action}s {bet_size}")
                 player = "ip"
                 agent = self.ip_agent
 
@@ -401,10 +396,11 @@ class PokerGame:
         logging.info("Starting Postflop Betting")
         state = self.get_game_state()
         initial_pot = state["pot"]
-        print(f"postflop_betting pot: {initial_pot}")
         self.current_bet = 0
         self.num_actions = 0
         self.current_player = self.oop_player
+        state['oop_player']['hand_strength'] = self.get_hand_strength(hand=self.oop_player.hand)
+        state['ip_player']['hand_strength'] = self.get_hand_strength(hand=self.ip_player.hand)
 
         oop_experiences = []
         ip_experiences = []
@@ -482,9 +478,6 @@ class PokerGame:
         valid_actions = []
         min_bet = max(MINIMUM_BET_INCREMENT, min(self.current_bet * 2, self.current_player.chips))
 
-        print(f"\nself.oop_player.chips = {type(self.oop_player.chips)} {self.oop_player.chips}")
-        print(f"\nself.oop_player.chips = {type(self.oop_player.chips)} {self.oop_player.chips}")
-        print(type(0.0))
         if self.oop_player.chips == 0.0 or self.ip_player.chips == 0.0:
             valid_actions = ["call", "fold"]
         elif self.current_bet == 0:
@@ -610,4 +603,13 @@ class PokerGame:
         ranks = "23456789TJQKA"
         suits = "cdhs"
         return (ranks.index(card[0]) + 2, suits.index(card[1]))
+
+    def get_hand_strength(self, hand):
+        hand_rank = evaluate_omaha_cards(
+            self.community_cards[0], self.community_cards[1], self.community_cards[2], self.community_cards[3], self.community_cards[4],
+            hand[0], hand[1], hand[2], hand[3]
+        )
+
+        return hand_rank
+
 
