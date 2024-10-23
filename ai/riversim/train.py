@@ -15,6 +15,15 @@ from metrics import loss as loss_metric, winrate, episode_reward, cumulative_rew
 setup_logging()
 
 def load_model(model_path):
+    """
+    Load a pre-trained model from a file.
+
+    Args:
+        model_path (str): The path to the saved model file.
+
+    Returns:
+        DQNAgent: A DQNAgent instance with the loaded model.
+    """
     state_size = 7 + (5*2) + 2*4*2
     action_size = 4
     agent = DQNAgent(state_size, action_size)
@@ -23,11 +32,27 @@ def load_model(model_path):
     return agent
 
 def list_available_models():
+    """
+    List all available model files in the models directory.
+
+    Returns:
+        list: A list of filenames of available models.
+    """
     models_dir = "./models"
     models = [f for f in os.listdir(models_dir) if f.endswith('.pth')]
     return models
 
 def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True):
+    """
+    Train the DQN agents for poker.
+
+    Args:
+        game (PokerGame): The poker game instance.
+        episodes (int): The number of episodes to train for.
+        batch_size (int, optional): The batch size for training. Defaults to 32.
+        train_ip (bool, optional): Whether to train the in-position agent. Defaults to True.
+        train_oop (bool, optional): Whether to train the out-of-position agent. Defaults to True.
+    """
     logging.info("Starting DQN training for PLO...")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -109,7 +134,15 @@ def train_dqn_poker(game, episodes, batch_size=32, train_ip=True, train_oop=True
 
 
 def main(mode='train', hands=10, train_oop=True, train_ip=True):
+    """
+    Main function to either train the model or play against AI.
 
+    Args:
+        mode (str, optional): 'train' or 'play'. Defaults to 'train'.
+        hands (int, optional): Number of hands to train on. Defaults to 10.
+        train_oop (bool, optional): Whether to train the out-of-position agent. Defaults to True.
+        train_ip (bool, optional): Whether to train the in-position agent. Defaults to True.
+    """
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.cuda.empty_cache()
@@ -169,6 +202,12 @@ def main(mode='train', hands=10, train_oop=True, train_ip=True):
         print(f"Total Time: {end_time - start_time:.2f} seconds")
 
 def play_against_ai(game):
+    """
+    Play a series of hands against the AI.
+
+    Args:
+        game (PokerGame): The poker game instance.
+    """
     while True:
         game_state = game.play_hand()
         print("\nFinal Chip Counts:")
@@ -180,6 +219,13 @@ def play_against_ai(game):
             break
         
 def save_model(agent, position):
+    """
+    Save the trained model to a file.
+
+    Args:
+        agent (DQNAgent): The agent whose model is to be saved.
+        position (str): The position of the agent ('oop' or 'ip').
+    """
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"./models/{position}_dqn_model_{timestamp}.pth"
     torch.save(agent.model.state_dict(), filename)
