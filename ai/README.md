@@ -10,7 +10,11 @@ This project contains the AI components for a Pot Limit Omaha (PLO) poker traine
 
     `cd ../ai && ./start.sh`
 
+    CUDA
     `docker run -it --gpus all -v ./models:/app/models --name plo_trainer --network plo_network -p 8000:8000 plo_trainer`
+
+    CPU
+    `docker run -it -v ./models:/app/models --name plo_trainer --network plo_network -p 8000:8000 plo_trainer`
 
     `python3 ./train.py`
 
