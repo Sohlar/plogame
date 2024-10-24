@@ -445,7 +445,6 @@ class PokerGame:
             # print(f"finished getting action: {action}")
             # print(f"bet size: {bet_size}")
 
-            action_int = self.action_to_int(action)
 
             self.process_preflop_action(action, bet_size)
         return game_state
@@ -454,25 +453,6 @@ class PokerGame:
         action_map = {"fold": 0, "check": 1, "call": 2, "bet": 3}
         return action_map[action]
 
-    def process_preflop_action(self, action, bet_size=None):
-        logging.info(f"Processing preflop action: {action}")
-        # This method will be called from the server to process each action
-        # print(f"Processing action: {action}")
-
-        if action == "bet":
-            print("Handling Bet")
-            self.handle_preflop_bet(bet_size)
-        if action == "call":
-            print("Handling Call")
-            self.handle_preflop_call()
-        if action == "check":
-            self.handle_preflop_check()
-            print("Handling Check")
-        if action == "fold":
-            print("handling Fold")
-            self.handle_fold()
-
-        self.switch_players()
 
     def get_valid_preflop_actions(self):
         # fmt: off
@@ -663,6 +643,39 @@ class PokerGame:
                 game_state["message"] = f"{street.capitalize()} betting complete"
                 return game_state
         return game_state
+
+    def process_action(self, action, amount=None):
+        if action not in ['bet', 'call', 'fold', 'check']:
+            return {"error": "Invalid Action"}
+        if action == "bet" and amount is None:
+            return {"error": "Bet amount is required"}
+        
+        if self.street == "preflop":
+            self.process_preflop_action(action, amount)
+        else:
+            self.process_postflop_action(action, amount)
+
+        return self.get_public_game_state()
+
+    def process_preflop_action(self, action, bet_size=None):
+        logging.info(f"Processing preflop action: {action}")
+        # This method will be called from the server to process each action
+        # print(f"Processing action: {action}")
+
+        if action == "bet":
+            print("Handling Bet")
+            self.handle_preflop_bet(bet_size)
+        if action == "call":
+            print("Handling Call")
+            self.handle_preflop_call()
+        if action == "check":
+            self.handle_preflop_check()
+            print("Handling Check")
+        if action == "fold":
+            print("handling Fold")
+            self.handle_fold()
+
+        self.switch_players()
 
     def process_postflop_action(self, action, bet_size=None):
         logging.info(f"Processing Postflop Action: {action}")
