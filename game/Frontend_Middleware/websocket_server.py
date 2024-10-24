@@ -3,6 +3,10 @@
 import asyncio
 import json
 from websockets.asyncio.server import serve
+from Backend.game_logic import PokerGame
+
+
+game_sessions = {}
 
 def get_ai_action(action):
     '''
@@ -45,15 +49,43 @@ def decode_ws_data(json_cmd):
             return "Valid Action was logged game state incoming" # need to return the state of the game
         else:
             raise Exception("Action "+act+" was not valid")
-
-    except:
-        print("Bad action")
+    except Exception as e:
+        print(f"Bad action: {e}")
         return "Invalid Requested Action" # tell the client they have sent an invalid value
 
 async def super_loop(websocket):
     async for message in websocket:
             ret_msg = decode_ws_data(message)
             await websocket.send(ret_msg)
+
+async def handle_message(websocket, path):
+    session_id = None
+    game = None
+    
+    try:
+        async for message in websocket:
+            data = json.loads(message)
+            action = data.get("action")
+            amount = data.get("amount", None)
+            session_id = data.get("session_id")
+
+            if session_id in game_sessions:
+                game = game_sessions[session_id]
+            else:
+                game = PokerGame()
+                game_sessions[session_id] = game
+
+            response = game.process_action(action, amount)
+
+            await websocket.send(json.dumps(response))
+
+    except Exception as e:
+        error_message = {"error": str(e)}
+        await websocket.send(json.dumps(error_message))
+    finally:
+        
+        if session_id and session_id in game_sessions:
+            del game_sessions[session_id]
 
 async def main():
     async with serve(super_loop, "localhost", 8765):

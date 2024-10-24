@@ -180,7 +180,8 @@ class PokerGame:
 
         self.initialize_game_state()
 
-        self.state_size = 7 + (5 * 2) + (2 * 4 * 2)
+        self.state_size = self.calculate_state_size()       #7 + (5 * 2) + (2 * 4 * 2)
+
         self.action_size = 4  # check, call, bet, fold
 
         # Initialize DQN agents
